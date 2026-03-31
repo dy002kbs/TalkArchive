@@ -27,6 +27,9 @@ export default function Header({
           </button>
         )}
         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
+        {!showBack && (
+          <span className="text-xs text-gray-400 ml-1">v0.1.0</span>
+        )}
       </div>
       {!showBack && (
         <div className="flex items-center gap-2">
