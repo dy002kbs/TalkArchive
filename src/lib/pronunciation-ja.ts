@@ -6,7 +6,9 @@ let kuroshiroInstance: Kuroshiro | null = null;
 async function getKuroshiro(): Promise<Kuroshiro> {
   if (kuroshiroInstance) return kuroshiroInstance;
   const kuroshiro = new Kuroshiro();
-  await kuroshiro.init(new KuromojiAnalyzer());
+  // Vercel에서는 node_modules 경로를 명시적으로 지정
+  const dictPath = process.cwd() + "/node_modules/kuromoji/dict";
+  await kuroshiro.init(new KuromojiAnalyzer({ dictPath }));
   kuroshiroInstance = kuroshiro;
   return kuroshiro;
 }
