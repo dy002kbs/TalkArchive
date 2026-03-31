@@ -8,7 +8,7 @@ import MessageBubble, { Message, Direction } from "@/components/MessageBubble";
 
 const STORAGE_KEY = "talkarchive_current_conversation";
 
-type Language = "zh" | "ja";
+type Language = "zh" | "ja" | "en";
 
 async function translate(
   text: string,
@@ -42,8 +42,8 @@ export default function Home() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const direction: Direction = isKoSource
-    ? language === "zh" ? "ko2zh" : "ko2ja"
-    : language === "zh" ? "zh2ko" : "ja2ko";
+    ? language === "zh" ? "ko2zh" : language === "ja" ? "ko2ja" : "ko2en"
+    : language === "zh" ? "zh2ko" : language === "ja" ? "ja2ko" : "en2ko";
 
   useEffect(() => {
     const savedId = localStorage.getItem(STORAGE_KEY);

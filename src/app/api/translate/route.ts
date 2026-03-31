@@ -9,6 +9,8 @@ const LANG_MAP: Record<string, { source: string; target: string }> = {
   zh2ko: { source: "zh-CN", target: "ko" },
   ko2ja: { source: "ko", target: "ja" },
   ja2ko: { source: "ja", target: "ko" },
+  ko2en: { source: "ko", target: "en" },
+  en2ko: { source: "en", target: "ko" },
 };
 
 export async function POST(request: NextRequest) {
@@ -72,6 +74,7 @@ export async function POST(request: NextRequest) {
     pronunciation = await japaneseToFurigana(text);
     pinyinText = await japaneseToRomaji(text);
   }
+  // 영어(ko2en, en2ko)는 발음 변환 불필요 — 빈 문자열 그대로
 
   return NextResponse.json({ translatedText, pronunciation, pinyinText });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-export type Direction = "ko2zh" | "zh2ko" | "ko2ja" | "ja2ko";
+export type Direction = "ko2zh" | "zh2ko" | "ko2ja" | "ja2ko" | "ko2en" | "en2ko";
 
 export interface Message {
   id: string;
@@ -17,6 +17,8 @@ const FLAG_MAP: Record<Direction, string> = {
   zh2ko: "🇨🇳→🇰🇷",
   ko2ja: "🇰🇷→🇯🇵",
   ja2ko: "🇯🇵→🇰🇷",
+  ko2en: "🇰🇷→🇺🇸",
+  en2ko: "🇺🇸→🇰🇷",
 };
 
 export default function MessageBubble({ message }: { message: Message }) {

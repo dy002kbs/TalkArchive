@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { Direction } from "@/components/MessageBubble";
 
-type Language = "zh" | "ja";
+type Language = "zh" | "ja" | "en";
 
 interface ChatInputProps {
   direction: Direction;
@@ -18,6 +18,8 @@ const DIRECTION_LABELS: Record<Direction, string> = {
   zh2ko: "中文 → 한국어",
   ko2ja: "한국어 → 日本語",
   ja2ko: "日本語 → 한국어",
+  ko2en: "한국어 → English",
+  en2ko: "English → 한국어",
 };
 
 const SPEECH_LANG: Record<Direction, string> = {
@@ -25,6 +27,8 @@ const SPEECH_LANG: Record<Direction, string> = {
   zh2ko: "zh-CN",
   ko2ja: "ko-KR",
   ja2ko: "ja-JP",
+  ko2en: "ko-KR",
+  en2ko: "en-US",
 };
 
 const PLACEHOLDERS: Record<Direction, string> = {
@@ -32,6 +36,8 @@ const PLACEHOLDERS: Record<Direction, string> = {
   zh2ko: "中文输入...",
   ko2ja: "한국어를 입력하세요...",
   ja2ko: "日本語を入力...",
+  ko2en: "한국어를 입력하세요...",
+  en2ko: "Type in English...",
 };
 
 export default function ChatInput({
@@ -132,6 +138,16 @@ export default function ChatInput({
             }`}
           >
             🇯🇵 日本語
+          </button>
+          <button
+            onClick={() => onChangeLanguage("en")}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              language === "en"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500"
+            }`}
+          >
+            🇺🇸 English
           </button>
         </div>
         <button
