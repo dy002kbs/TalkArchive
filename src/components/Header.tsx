@@ -50,6 +50,12 @@ export default function Header({
           >
             학습
           </Link>
+          <Link
+            href="/feedback"
+            className="px-3 py-1.5 text-sm font-medium text-orange-600 bg-orange-50 rounded-full active:bg-orange-100 transition-colors"
+          >
+            QA
+          </Link>
         </div>
       )}
     </header>
