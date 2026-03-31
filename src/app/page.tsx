@@ -4,13 +4,15 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
 import ChatInput from "@/components/ChatInput";
-import MessageBubble, { Message } from "@/components/MessageBubble";
+import MessageBubble, { Message, Direction } from "@/components/MessageBubble";
 
 const STORAGE_KEY = "talkarchive_current_conversation";
 
+type Language = "zh" | "ja";
+
 async function translate(
   text: string,
-  direction: "ko2zh" | "zh2ko"
+  direction: Direction
 ): Promise<{ translated: string; pronunciation: string; pinyinText: string }> {
   const res = await fetch("/api/translate", {
     method: "POST",
@@ -32,13 +34,17 @@ async function translate(
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [direction, setDirection] = useState<"ko2zh" | "zh2ko">("ko2zh");
+  const [language, setLanguage] = useState<Language>("zh");
+  const [isKoSource, setIsKoSource] = useState(true);
   const [isTranslating, setIsTranslating] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // 페이지 로드 시 이전 대화 세션 복원
+  const direction: Direction = isKoSource
+    ? language === "zh" ? "ko2zh" : "ko2ja"
+    : language === "zh" ? "zh2ko" : "ja2ko";
+
   useEffect(() => {
     const savedId = localStorage.getItem(STORAGE_KEY);
     if (savedId) {
@@ -75,7 +81,6 @@ export default function Home() {
         }))
       );
     } else {
-      // 대화는 있지만 메시지가 없거나 삭제된 경우
       localStorage.removeItem(STORAGE_KEY);
       setConversationId(null);
     }
@@ -98,7 +103,11 @@ export default function Home() {
   }, [conversationId]);
 
   const handleToggleDirection = () => {
-    setDirection((prev) => (prev === "ko2zh" ? "zh2ko" : "ko2zh"));
+    setIsKoSource((prev) => !prev);
+  };
+
+  const handleChangeLanguage = (lang: Language) => {
+    setLanguage(lang);
   };
 
   const handleSend = async (text: string) => {
@@ -122,7 +131,6 @@ export default function Home() {
 
       if (error) throw error;
 
-      // 첫 번째 메시지면 대화 제목을 자동 설정
       if (messages.length === 0) {
         const title = text.length > 30 ? text.slice(0, 30) + "..." : text;
         await supabase
@@ -180,6 +188,8 @@ export default function Home() {
 
       <ChatInput
         direction={direction}
+        language={language}
+        onChangeLanguage={handleChangeLanguage}
         onToggleDirection={handleToggleDirection}
         onSend={handleSend}
       />

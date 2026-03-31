@@ -1,8 +1,10 @@
 "use client";
 
+export type Direction = "ko2zh" | "zh2ko" | "ko2ja" | "ja2ko";
+
 export interface Message {
   id: string;
-  direction: "ko2zh" | "zh2ko";
+  direction: Direction;
   originalText: string;
   translatedText: string;
   pronunciation: string;
@@ -10,9 +12,15 @@ export interface Message {
   createdAt: Date;
 }
 
+const FLAG_MAP: Record<Direction, string> = {
+  ko2zh: "🇰🇷→🇨🇳",
+  zh2ko: "🇨🇳→🇰🇷",
+  ko2ja: "🇰🇷→🇯🇵",
+  ja2ko: "🇯🇵→🇰🇷",
+};
+
 export default function MessageBubble({ message }: { message: Message }) {
-  const isKoToZh = message.direction === "ko2zh";
-  const flag = isKoToZh ? "🇰🇷→🇨🇳" : "🇨🇳→🇰🇷";
+  const flag = FLAG_MAP[message.direction] || "";
 
   return (
     <div className="px-4 py-2">

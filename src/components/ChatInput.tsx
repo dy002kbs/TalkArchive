@@ -1,15 +1,43 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { Direction } from "@/components/MessageBubble";
+
+type Language = "zh" | "ja";
 
 interface ChatInputProps {
-  direction: "ko2zh" | "zh2ko";
+  direction: Direction;
+  language: Language;
+  onChangeLanguage: (lang: Language) => void;
   onToggleDirection: () => void;
   onSend: (text: string) => void;
 }
 
+const DIRECTION_LABELS: Record<Direction, string> = {
+  ko2zh: "한국어 → 中文",
+  zh2ko: "中文 → 한국어",
+  ko2ja: "한국어 → 日本語",
+  ja2ko: "日本語 → 한국어",
+};
+
+const SPEECH_LANG: Record<Direction, string> = {
+  ko2zh: "ko-KR",
+  zh2ko: "zh-CN",
+  ko2ja: "ko-KR",
+  ja2ko: "ja-JP",
+};
+
+const PLACEHOLDERS: Record<Direction, string> = {
+  ko2zh: "한국어를 입력하세요...",
+  zh2ko: "中文输入...",
+  ko2ja: "한국어를 입력하세요...",
+  ja2ko: "日本語を入力...",
+};
+
 export default function ChatInput({
   direction,
+  language,
+  onChangeLanguage,
   onToggleDirection,
   onSend,
 }: ChatInputProps) {
@@ -17,14 +45,6 @@ export default function ChatInput({
   const [isListening, setIsListening] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
-
-  const directionLabel =
-    direction === "ko2zh" ? "한국어 → 中文" : "中文 → 한국어";
-
-  const placeholder =
-    direction === "ko2zh"
-      ? "한국어를 입력하세요..."
-      : "中文输入...";
 
   const handleSubmit = () => {
     if (!text.trim()) return;
@@ -55,18 +75,19 @@ export default function ChatInput({
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = direction === "ko2zh" ? "ko-KR" : "zh-CN";
+    recognition.lang = SPEECH_LANG[direction];
     recognition.interimResults = true;
     recognition.continuous = false;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     recognition.onresult = (event: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const transcript = Array.from(event.results as ArrayLike<any>)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .map((result: any) => result[0].transcript)
         .join("");
       setText(transcript);
 
-      // 최종 결과면 자동 전송
       if (event.results[event.results.length - 1].isFinal) {
         onSend(transcript.trim());
         setText("");
@@ -90,12 +111,34 @@ export default function ChatInput({
 
   return (
     <div className="bg-white border-t border-gray-200 px-4 py-3">
-      <div className="flex items-center mb-2">
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center bg-gray-100 rounded-full p-0.5">
+          <button
+            onClick={() => onChangeLanguage("zh")}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              language === "zh"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500"
+            }`}
+          >
+            🇨🇳 中文
+          </button>
+          <button
+            onClick={() => onChangeLanguage("ja")}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+              language === "ja"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500"
+            }`}
+          >
+            🇯🇵 日本語
+          </button>
+        </div>
         <button
           onClick={onToggleDirection}
           className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-sm font-medium text-gray-700 active:bg-gray-200 transition-colors"
         >
-          {directionLabel}
+          {DIRECTION_LABELS[direction]}
           <span className="text-base">🔄</span>
         </button>
       </div>
@@ -123,7 +166,7 @@ export default function ChatInput({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isListening ? "듣고 있어요..." : placeholder}
+          placeholder={isListening ? "듣고 있어요..." : PLACEHOLDERS[direction]}
           className="flex-1 px-4 py-2.5 rounded-full border border-gray-300 text-base focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
         <button
