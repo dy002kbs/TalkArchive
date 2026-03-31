@@ -1,18 +1,3 @@
-import Kuroshiro from "kuroshiro";
-import KuromojiAnalyzer from "kuroshiro-analyzer-kuromoji";
-
-let kuroshiroInstance: Kuroshiro | null = null;
-
-async function getKuroshiro(): Promise<Kuroshiro> {
-  if (kuroshiroInstance) return kuroshiroInstance;
-  const kuroshiro = new Kuroshiro();
-  // Vercel에서는 node_modules 경로를 명시적으로 지정
-  const dictPath = process.cwd() + "/node_modules/kuromoji/dict";
-  await kuroshiro.init(new KuromojiAnalyzer({ dictPath }));
-  kuroshiroInstance = kuroshiro;
-  return kuroshiro;
-}
-
 // 로마자 음절 → 한글 매핑
 const ROMAJI_TO_HANGUL: Record<string, string> = {
   a: "아", i: "이", u: "우", e: "에", o: "오",
@@ -44,22 +29,18 @@ const ROMAJI_TO_HANGUL: Record<string, string> = {
   pya: "퍄", pyu: "퓨", pyo: "표",
 };
 
-// 장음 문자를 일반 모음으로 변환
-function normalizeLongVowels(text: string): string {
+// 장음 → 모음 반복 (파파고 스타일: ō → 오오)
+function expandLongVowels(text: string): string {
   return text
-    .replace(/ō/g, "o").replace(/Ō/g, "o")
-    .replace(/ū/g, "u").replace(/Ū/g, "u")
-    .replace(/ā/g, "a").replace(/Ā/g, "a")
-    .replace(/ē/g, "e").replace(/Ē/g, "e")
-    .replace(/ī/g, "i").replace(/Ī/g, "i");
+    .replace(/ō/g, "oo").replace(/Ō/g, "oo")
+    .replace(/ū/g, "uu").replace(/Ū/g, "uu")
+    .replace(/ā/g, "aa").replace(/Ā/g, "aa")
+    .replace(/ē/g, "ee").replace(/Ē/g, "ee")
+    .replace(/ī/g, "ii").replace(/Ī/g, "ii");
 }
 
 function romajiToHangul(romaji: string): string {
-  // n' → ん 처리: n'을 "ㄴ" 받침으로 변환
-  // romaji에서 n' 또는 단어 내 n+자음을 "ㄴ"으로 처리
-  const normalized = normalizeLongVowels(romaji.toLowerCase());
-
-  // 단어 단위로 분리
+  const normalized = expandLongVowels(romaji.toLowerCase());
   const words = normalized.split(/\s+/);
 
   const hangulWords = words.map((word) => {
@@ -77,13 +58,12 @@ function romajiToHangul(romaji: string): string {
       // n' 처리 (ん): kon'ya → 콘야
       if (w[i] === "n" && i + 1 < w.length && w[i + 1] === "'") {
         result += "ㄴ";
-        i += 2; // n' 건너뛰기
+        i += 2;
         continue;
       }
 
       // n + 자음 처리 (ん): konban → 콘반
       if (w[i] === "n" && i + 1 < w.length && /[bcdfghjklmnpqrstvwxyz]/.test(w[i + 1])) {
-        // 단, na ni nu ne no 등은 제외 — 다음이 모음이 아닌 자음일 때만
         result += "ㄴ";
         i += 1;
         continue;
@@ -96,7 +76,7 @@ function romajiToHangul(romaji: string): string {
         continue;
       }
 
-      // 촉음 (연속 자음): kk, tt, pp, ss 등 → ッ
+      // 촉음 (연속 자음): kk, tt, pp, ss
       if (i + 1 < w.length && w[i] === w[i + 1] && /[bcdfghjklmnpqrstvwxyz]/.test(w[i])) {
         result += "ッ";
         i++;
@@ -131,13 +111,10 @@ function romajiToHangul(romaji: string): string {
         continue;
       }
 
-      // 매칭 안 되면 건너뛰기
       i++;
     }
 
-    // ㄴ 받침을 앞 글자에 합치기: "코ㄴ야" → "콘야"
     result = mergeReceivingConsonant(result);
-
     return result;
   });
 
@@ -157,7 +134,6 @@ function mergeReceivingConsonant(text: string): string {
       }
     }
     if (text[i] === "ッ" && i > 0) {
-      // 촉음: 앞 글자에 ㅅ 받침 추가 (간략화)
       const prevChar = result[result.length - 1];
       const merged = addBatchim(prevChar, "ㅅ");
       if (merged) {
@@ -173,38 +149,58 @@ function mergeReceivingConsonant(text: string): string {
 // 한글 글자에 받침 추가
 function addBatchim(char: string, batchim: string): string | null {
   const code = char.charCodeAt(0);
-  // 한글 범위 체크
   if (code < 0xac00 || code > 0xd7a3) return null;
-
-  const offset = code - 0xac00;
-  const currentBatchim = offset % 28;
-  // 이미 받침이 있으면 합성 안 함
+  const currentBatchim = (code - 0xac00) % 28;
   if (currentBatchim !== 0) return null;
-
-  const batchimMap: Record<string, number> = {
-    "ㄴ": 4,
-    "ㅅ": 19,
-  };
-
+  const batchimMap: Record<string, number> = { "ㄴ": 4, "ㅅ": 19 };
   const batchimCode = batchimMap[batchim];
   if (batchimCode === undefined) return null;
-
   return String.fromCharCode(code + batchimCode);
 }
 
-/**
- * 일본어 텍스트를 한글 발음으로 변환
- */
-export async function japaneseToHangulPronunciation(text: string): Promise<string> {
-  const kuroshiro = await getKuroshiro();
-  const romaji = await kuroshiro.convert(text, { to: "romaji", mode: "spaced" });
-  return romajiToHangul(romaji);
+// 일본어 조사를 앞 단어에 붙이기 (파파고 스타일)
+const PARTICLES = new Set(["o", "wa", "ga", "ni", "de", "no", "to", "ka", "mo", "e", "wo"]);
+
+function mergeParticles(romaji: string): string {
+  const words = romaji.split(/\s+/);
+  const merged: string[] = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const lower = words[i].toLowerCase().replace(/[.,!?？。！]/g, "");
+    if (PARTICLES.has(lower) && merged.length > 0) {
+      // 조사를 앞 단어에 붙이기
+      merged[merged.length - 1] += words[i];
+    } else {
+      merged.push(words[i]);
+    }
+  }
+
+  return merged.join(" ");
 }
 
 /**
- * 일본어 텍스트의 후리가나(히라가나) 반환
+ * Google 비공식 API에서 일본어 romaji를 가져와 한글로 변환
+ * 실패 시 빈 문자열 반환 (graceful fallback)
  */
-export async function japaneseToFurigana(text: string): Promise<string> {
-  const kuroshiro = await getKuroshiro();
-  return await kuroshiro.convert(text, { to: "hiragana" });
+export async function japaneseToHangulPronunciation(text: string): Promise<string> {
+  try {
+    const encoded = encodeURIComponent(text);
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ja&tl=ko&dt=rm&dt=t&q=${encoded}`
+    );
+
+    if (!res.ok) return "";
+
+    const raw = await res.text();
+    // null을 JSON 파싱 가능하게 변환
+    const data = JSON.parse(raw.replace(/,null/g, ',"null"').replace(/null,/g, '"null",').replace(/\[null/g, '["null"').replace(/null\]/g, '"null"]'));
+
+    // romaji는 data[0][1][3] 위치
+    const romaji = data?.[0]?.[1]?.[3];
+    if (!romaji || romaji === "null") return "";
+
+    return romajiToHangul(mergeParticles(romaji));
+  } catch {
+    return "";
+  }
 }

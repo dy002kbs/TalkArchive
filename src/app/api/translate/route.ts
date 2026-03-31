@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { chineseToHangulPronunciation, chineseToPinyinWithTone } from "@/lib/pronunciation";
-import { japaneseToHangulPronunciation, japaneseToFurigana } from "@/lib/pronunciation-ja";
+import { japaneseToHangulPronunciation } from "@/lib/pronunciation-ja";
 
 const API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;
 
