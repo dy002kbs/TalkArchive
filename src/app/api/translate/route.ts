@@ -66,13 +66,11 @@ export async function POST(request: NextRequest) {
     pronunciation = chineseToHangulPronunciation(text);
     pinyinText = chineseToPinyinWithTone(text);
   } else if (direction === "ko2ja") {
-    // 한→일: 한글 발음 + 후리가나
+    // 한→일: 한글 발음만
     pronunciation = await japaneseToHangulPronunciation(translatedText);
-    pinyinText = await japaneseToFurigana(translatedText);
   } else if (direction === "ja2ko") {
-    // 일→한: 원문의 한글 발음 + 후리가나
+    // 일→한: 원문의 한글 발음만
     pronunciation = await japaneseToHangulPronunciation(text);
-    pinyinText = await japaneseToFurigana(text);
   }
   // 영어(ko2en, en2ko)는 발음 변환 불필요 — 빈 문자열 그대로
 
