@@ -95,11 +95,8 @@ export default function ChatInput({
       setText(transcript);
 
       if (event.results[event.results.length - 1].isFinal) {
-        // 인식 완료된 텍스트를 잠깐 보여준 후 전송
-        setTimeout(() => {
-          onSend(transcript.trim());
-          setText("");
-        }, 800);
+        onSend(transcript.trim());
+        setText("");
       }
     };
 
