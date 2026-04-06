@@ -9,8 +9,9 @@ interface DashboardData {
   totalConversations: number;
   totalMessages: number;
   langStats: Record<string, number>;
-  thisWeekCount: number;
-  weeklyChange: number;
+  periodDays: number;
+  currentPeriodCount: number;
+  periodChange: number;
   dailyActivity: Record<string, number>;
   totalFlashcards: number;
   masteredFlashcards: number;
@@ -23,6 +24,8 @@ interface DashboardData {
     frequency: number;
   }[];
 }
+
+type Period = 7 | 14 | 30;
 
 const LANG_LABELS: Record<string, string> = {
   zh: "🇨🇳 중국어",
@@ -38,13 +41,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<string | null>(null);
   const [recLangFilter, setRecLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
+  const [period, setPeriod] = useState<Period>(7);
 
   useEffect(() => {
-    loadDashboard();
-  }, []);
+    loadDashboard(period);
+  }, [period]);
 
-  const loadDashboard = async () => {
-    const res = await fetch("/api/dashboard");
+  const loadDashboard = async (periodDays: Period) => {
+    setLoading(true);
+    const res = await fetch(`/api/dashboard?period=${periodDays}`);
     const json = await res.json();
     setData(json);
     setLoading(false);
@@ -115,18 +120,18 @@ export default function DashboardPage() {
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
             <p className="text-2xl font-bold text-blue-600">
-              {data.thisWeekCount}
+              {data.currentPeriodCount}
             </p>
             <p className="text-xs text-gray-400 mt-1">
-              이번 주 번역{" "}
-              {data.weeklyChange !== 0 && (
+              최근 {data.periodDays}일 번역{" "}
+              {data.periodChange !== 0 && (
                 <span
                   className={
-                    data.weeklyChange > 0 ? "text-green-500" : "text-red-500"
+                    data.periodChange > 0 ? "text-green-500" : "text-red-500"
                   }
                 >
-                  (지난주 대비 {data.weeklyChange > 0 ? "+" : ""}
-                  {data.weeklyChange}%)
+                  ({data.periodChange > 0 ? "+" : ""}
+                  {data.periodChange}%)
                 </span>
               )}
             </p>
@@ -176,22 +181,47 @@ export default function DashboardPage() {
 
         {/* 일별 활동 차트 */}
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-          <p className="text-sm font-semibold text-gray-700 mb-3">
-            최근 7일 활동
-          </p>
-          <div className="flex items-end justify-between gap-1 h-24">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-gray-700">
+              최근 {data.periodDays}일 활동
+            </p>
+            <div className="flex items-center bg-gray-100 rounded-full p-0.5">
+              {([7, 14, 30] as Period[]).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    period === p
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {p}일
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-end justify-between gap-0.5 h-24">
             {Object.entries(data.dailyActivity).map(([date, count]) => (
-              <div key={date} className="flex-1 flex flex-col items-center">
+              <div key={date} className="flex-1 flex flex-col items-center min-w-0">
                 <div
                   className="w-full bg-blue-400 rounded-t-sm transition-all"
                   style={{
                     height: `${Math.max((count / maxDaily) * 80, count > 0 ? 4 : 0)}px`,
                   }}
                 />
-                <p className="text-[10px] text-gray-400 mt-1">{date}</p>
+                {data.periodDays <= 14 && (
+                  <p className="text-[9px] text-gray-400 mt-1 truncate">{date}</p>
+                )}
               </div>
             ))}
           </div>
+          {data.periodDays > 14 && (
+            <p className="text-[10px] text-gray-400 text-center mt-1">
+              {Object.keys(data.dailyActivity)[0]} ~{" "}
+              {Object.keys(data.dailyActivity)[Object.keys(data.dailyActivity).length - 1]}
+            </p>
+          )}
         </div>
 
         {/* 플래시카드 바로가기 */}
@@ -202,7 +232,7 @@ export default function DashboardPage() {
           >
             <p className="text-base font-medium">플래시카드 복습하기</p>
             <p className="text-xs text-blue-200 mt-1">
-              {data.totalFlashcards}개 카드 | {data.masteredFlashcards}개 마스터
+              {data.totalFlashcards}개 카드 | {data.masteredFlashcards}개 암기
             </p>
           </button>
         )}

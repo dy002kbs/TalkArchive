@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -6,10 +6,13 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   // TODO: 로그인 추가 시 user_id 필터링 추가
-  // const userId = await getAuthUserId(request);
-  // .eq("user_id", userId)
+
+  // 기간 파라미터 (기본 7일)
+  const { searchParams } = new URL(request.url);
+  const periodDays = parseInt(searchParams.get("period") || "7", 10);
+  const validPeriod = [7, 14, 30].includes(periodDays) ? periodDays : 7;
 
   // 전체 대화 수
   const { count: totalConversations } = await supabase
@@ -28,14 +31,16 @@ export async function GET() {
 
   const langStats: Record<string, number> = {};
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  let thisWeekCount = 0;
-  let lastWeekCount = 0;
+  const periodStart = new Date(now.getTime() - validPeriod * 24 * 60 * 60 * 1000);
+  const prevPeriodStart = new Date(
+    now.getTime() - validPeriod * 2 * 24 * 60 * 60 * 1000
+  );
+  let currentPeriodCount = 0;
+  let prevPeriodCount = 0;
 
-  // 일별 활동 (최근 7일)
+  // 일별 활동 (선택 기간)
   const dailyActivity: Record<string, number> = {};
-  for (let i = 6; i >= 0; i--) {
+  for (let i = validPeriod - 1; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
     const key = `${d.getMonth() + 1}/${d.getDate()}`;
     dailyActivity[key] = 0;
@@ -50,13 +55,13 @@ export async function GET() {
         : "en";
     langStats[lang] = (langStats[lang] || 0) + 1;
 
-    // 주간 비교
+    // 기간 비교
     const created = new Date(m.created_at);
-    if (created >= weekAgo) thisWeekCount++;
-    if (created >= twoWeeksAgo && created < weekAgo) lastWeekCount++;
+    if (created >= periodStart) currentPeriodCount++;
+    if (created >= prevPeriodStart && created < periodStart) prevPeriodCount++;
 
     // 일별 활동
-    if (created >= weekAgo) {
+    if (created >= periodStart) {
       const key = `${created.getMonth() + 1}/${created.getDate()}`;
       if (dailyActivity[key] !== undefined) {
         dailyActivity[key]++;
@@ -64,11 +69,11 @@ export async function GET() {
     }
   });
 
-  // 주간 변화율
-  const weeklyChange =
-    lastWeekCount > 0
-      ? Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100)
-      : thisWeekCount > 0
+  // 변화율
+  const periodChange =
+    prevPeriodCount > 0
+      ? Math.round(((currentPeriodCount - prevPeriodCount) / prevPeriodCount) * 100)
+      : currentPeriodCount > 0
         ? 100
         : 0;
 
@@ -82,7 +87,7 @@ export async function GET() {
     .select("*", { count: "exact", head: true })
     .eq("mastered", true);
 
-  // 번역 빈도 기반 추천 — 같은 번역 결과가 여러 번 나온 문장 우선
+  // 번역 빈도 기반 추천
   const { data: allMessages } = await supabase
     .from("messages")
     .select("id, original_text, translated_text, direction, pronunciation");
@@ -95,8 +100,10 @@ export async function GET() {
     (existingFlashcards || []).map((f) => f.message_id)
   );
 
-  // 번역문 기준 빈도수 집계
-  const freqMap = new Map<string, { count: number; message: typeof allMessages extends (infer T)[] | null ? T : never }>();
+  const freqMap = new Map<
+    string,
+    { count: number; message: typeof allMessages extends (infer T)[] | null ? T : never }
+  >();
   (allMessages || []).forEach((m) => {
     if (flashcardMessageIds.has(m.id)) return;
     if (m.original_text.length < 2 || m.original_text.length > 30) return;
@@ -109,7 +116,6 @@ export async function GET() {
     }
   });
 
-  // 빈도순 정렬 후 상위 30개 추천 (클라이언트에서 언어별 필터링)
   const recommendations = Array.from(freqMap.values())
     .sort((a, b) => b.count - a.count)
     .slice(0, 30)
@@ -122,8 +128,9 @@ export async function GET() {
     totalConversations: totalConversations || 0,
     totalMessages: totalMessages || 0,
     langStats,
-    thisWeekCount,
-    weeklyChange,
+    periodDays: validPeriod,
+    currentPeriodCount,
+    periodChange,
     dailyActivity,
     totalFlashcards: totalFlashcards || 0,
     masteredFlashcards: masteredFlashcards || 0,

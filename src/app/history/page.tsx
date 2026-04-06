@@ -145,7 +145,7 @@ export default function HistoryPage() {
             {pinned.length > 0 && !searchResults && (
               <div className="px-4 pt-4">
                 <p className="text-xs font-semibold text-gray-400 mb-2">
-                  📌 핀 고정
+                  📌 핀 고정 (최대 3개)
                 </p>
                 {pinned.map((conv) => (
                   <ConversationCard
