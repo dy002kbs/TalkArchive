@@ -26,6 +26,7 @@ export default function FlashcardsPage() {
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
+  const [langFilter, setLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
 
   useEffect(() => {
     loadFlashcards();
@@ -75,25 +76,25 @@ export default function FlashcardsPage() {
     setLoading(false);
   };
 
-  const toggleMastered = async (index: number) => {
-    const card = cards[index];
-    const newMastered = !card.mastered;
+  const toggleMasteredById = async (cardId: string) => {
+    const target = cards.find((c) => c.id === cardId);
+    if (!target) return;
+    const newMastered = !target.mastered;
     await supabase
       .from("flashcards")
       .update({ mastered: newMastered })
-      .eq("id", card.id);
+      .eq("id", cardId);
 
     setCards((prev) =>
-      prev.map((c, i) =>
-        i === index ? { ...c, mastered: newMastered } : c
+      prev.map((c) =>
+        c.id === cardId ? { ...c, mastered: newMastered } : c
       )
     );
   };
 
-  const deleteCard = async (index: number) => {
-    const card = cards[index];
-    await supabase.from("flashcards").delete().eq("id", card.id);
-    const newCards = cards.filter((_, i) => i !== index);
+  const deleteCardById = async (cardId: string) => {
+    await supabase.from("flashcards").delete().eq("id", cardId);
+    const newCards = cards.filter((c) => c.id !== cardId);
     setCards(newCards);
     if (currentIndex >= newCards.length && newCards.length > 0) {
       setCurrentIndex(newCards.length - 1);
@@ -103,12 +104,22 @@ export default function FlashcardsPage() {
 
   const handlePrev = () => {
     setIsFlipped(false);
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : cards.length - 1));
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : filteredCards.length - 1));
   };
 
   const handleNext = () => {
     setIsFlipped(false);
-    setCurrentIndex((prev) => (prev < cards.length - 1 ? prev + 1 : 0));
+    setCurrentIndex((prev) => (prev < filteredCards.length - 1 ? prev + 1 : 0));
+  };
+
+  const filteredCards = langFilter === "all"
+    ? cards
+    : cards.filter((c) => c.direction.includes(langFilter));
+
+  const handleLangFilter = (lang: "all" | "zh" | "ja" | "en") => {
+    setLangFilter(lang);
+    setCurrentIndex(0);
+    setIsFlipped(false);
   };
 
   if (loading) {
@@ -134,125 +145,161 @@ export default function FlashcardsPage() {
     );
   }
 
-  const card = cards[currentIndex];
-  const isKoSource = card.direction.startsWith("ko");
+  const safeIndex = Math.min(currentIndex, Math.max(filteredCards.length - 1, 0));
+  const card = filteredCards[safeIndex];
+  const isKoSource = card?.direction.startsWith("ko");
 
   return (
     <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
       <Header title="플래시카드" showBack onBack={() => router.push("/")} />
 
-      {/* 모드 전환 탭 */}
-      <div className="px-4 pt-3">
+      {/* 언어 필터 + 모드 전환 */}
+      <div className="px-4 pt-3 space-y-2">
         <div className="flex items-center bg-gray-100 rounded-full p-0.5">
-          <button
-            onClick={() => setViewMode("card")}
-            className={`flex-1 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              viewMode === "card"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500"
-            }`}
-          >
-            카드 모드
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            className={`flex-1 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              viewMode === "list"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500"
-            }`}
-          >
-            목록 모드
-          </button>
+          {(
+            [
+              { value: "all", label: "전체" },
+              { value: "zh", label: "🇨🇳 중국어" },
+              { value: "ja", label: "🇯🇵 일본어" },
+              { value: "en", label: "🇺🇸 영어" },
+            ] as const
+          ).map((lang) => (
+            <button
+              key={lang.value}
+              onClick={() => handleLangFilter(lang.value)}
+              className={`flex-1 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                langFilter === lang.value
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500"
+              }`}
+            >
+              {lang.label}
+            </button>
+          ))}
         </div>
-        <p className="text-xs text-gray-400 text-right mt-1">
-          {cards.length}/{MAX_FREE_FLASHCARDS}개 사용
-        </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center bg-gray-100 rounded-full p-0.5">
+            <button
+              onClick={() => setViewMode("card")}
+              className={`px-4 py-1 rounded-full text-xs font-medium transition-colors ${
+                viewMode === "card"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500"
+              }`}
+            >
+              카드
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-4 py-1 rounded-full text-xs font-medium transition-colors ${
+                viewMode === "list"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500"
+              }`}
+            >
+              목록
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">
+            {filteredCards.length}개{langFilter !== "all" && ` (전체 ${cards.length}/${MAX_FREE_FLASHCARDS})`}
+          </p>
+        </div>
       </div>
 
       {viewMode === "card" ? (
         /* 카드 모드 */
         <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <p className="text-sm text-gray-400 mb-4">
-            {currentIndex + 1} / {cards.length}
-          </p>
+          {!card ? (
+            <p className="text-sm text-gray-400">이 언어의 카드가 없습니다</p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-400 mb-4">
+                {safeIndex + 1} / {filteredCards.length}
+              </p>
 
-          <div
-            onClick={() => setIsFlipped(!isFlipped)}
-            className={`w-full rounded-2xl shadow-md border p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer active:shadow-lg transition-shadow ${
-              card.mastered
-                ? "bg-yellow-50 border-yellow-200"
-                : "bg-white border-gray-100"
-            }`}
-          >
-            {!isFlipped ? (
-              <>
-                <p className="text-xl text-gray-900 text-center font-medium">
-                  {isKoSource ? card.original_text : card.translated_text}
-                </p>
-                <p className="text-sm text-gray-400 mt-6">탭해서 뒤집기</p>
-              </>
-            ) : (
-              <>
-                <p className="text-xl text-blue-600 text-center font-medium">
-                  {isKoSource ? card.translated_text : card.original_text}
-                </p>
-                {card.pronunciation && (
-                  <p className="text-base text-gray-500 mt-2 text-center">
-                    {card.pronunciation}
-                  </p>
+              <div
+                onClick={() => setIsFlipped(!isFlipped)}
+                className={`w-full rounded-2xl shadow-md border p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer active:shadow-lg transition-shadow ${
+                  card.mastered
+                    ? "bg-yellow-50 border-yellow-200"
+                    : "bg-white border-gray-100"
+                }`}
+              >
+                {!isFlipped ? (
+                  <>
+                    <p className="text-xl text-gray-900 text-center font-medium">
+                      {isKoSource ? card.original_text : card.translated_text}
+                    </p>
+                    <p className="text-sm text-gray-400 mt-6">탭해서 뒤집기</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xl text-blue-600 text-center font-medium">
+                      {isKoSource ? card.translated_text : card.original_text}
+                    </p>
+                    {card.pronunciation && (
+                      <p className="text-base text-gray-500 mt-2 text-center">
+                        {card.pronunciation}
+                      </p>
+                    )}
+                    {card.pinyin_text && (
+                      <p className="text-sm text-gray-400 mt-1 text-center italic">
+                        {card.pinyin_text}
+                      </p>
+                    )}
+                  </>
                 )}
-                {card.pinyin_text && (
-                  <p className="text-sm text-gray-400 mt-1 text-center italic">
-                    {card.pinyin_text}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
+              </div>
 
-          <p className="text-xs text-gray-400 mt-4">
-            📍 {card.conversation_title}
-          </p>
-          {card.mastered && (
-            <p className="text-xs text-yellow-600 mt-1">⭐ 마스터 완료</p>
+              <p className="text-xs text-gray-400 mt-4">
+                📍 {card.conversation_title}
+              </p>
+              {card.mastered && (
+                <p className="text-xs text-yellow-600 mt-1">⭐ 암기 완료</p>
+              )}
+
+              <div className="flex items-center gap-6 mt-8">
+                <button
+                  onClick={handlePrev}
+                  className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
+                >
+                  ◀ 이전
+                </button>
+                <button
+                  onClick={() => toggleMasteredById(card.id)}
+                  className={`px-4 py-2.5 rounded-full text-sm font-medium transition-colors ${
+                    card.mastered
+                      ? "bg-yellow-200 text-yellow-800 active:bg-yellow-300"
+                      : "bg-yellow-100 text-yellow-700 active:bg-yellow-200"
+                  }`}
+                >
+                  ⭐
+                </button>
+                <button
+                  onClick={() => deleteCardById(card.id)}
+                  className="px-4 py-2.5 rounded-full bg-red-50 text-red-500 text-sm font-medium active:bg-red-100 transition-colors"
+                >
+                  🗑️
+                </button>
+                <button
+                  onClick={handleNext}
+                  className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
+                >
+                  다음 ▶
+                </button>
+              </div>
+            </>
           )}
-
-          <div className="flex items-center gap-6 mt-8">
-            <button
-              onClick={handlePrev}
-              className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
-            >
-              ◀ 이전
-            </button>
-            <button
-              onClick={() => toggleMastered(currentIndex)}
-              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-colors ${
-                card.mastered
-                  ? "bg-yellow-200 text-yellow-800 active:bg-yellow-300"
-                  : "bg-yellow-100 text-yellow-700 active:bg-yellow-200"
-              }`}
-            >
-              ⭐
-            </button>
-            <button
-              onClick={() => deleteCard(currentIndex)}
-              className="px-4 py-2.5 rounded-full bg-red-50 text-red-500 text-sm font-medium active:bg-red-100 transition-colors"
-            >
-              🗑️
-            </button>
-            <button
-              onClick={handleNext}
-              className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
-            >
-              다음 ▶
-            </button>
-          </div>
         </div>
       ) : (
         /* 목록 모드 */
         <div className="flex-1 overflow-y-auto px-4 py-2">
-          {cards.map((c, i) => (
+          {filteredCards.length === 0 && (
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+              이 언어의 카드가 없습니다
+            </div>
+          )}
+          {filteredCards.map((c) => (
             <div
               key={c.id}
               className={`flex items-center gap-3 p-3 mb-2 rounded-xl border shadow-sm ${
@@ -276,7 +323,7 @@ export default function FlashcardsPage() {
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => toggleMastered(i)}
+                  onClick={() => toggleMasteredById(c.id)}
                   className={`p-1.5 rounded-full text-xs transition-colors ${
                     c.mastered
                       ? "bg-yellow-200 text-yellow-800"
@@ -286,7 +333,7 @@ export default function FlashcardsPage() {
                   ⭐
                 </button>
                 <button
-                  onClick={() => deleteCard(i)}
+                  onClick={() => deleteCardById(c.id)}
                   className="p-1.5 rounded-full bg-gray-100 text-gray-400 active:bg-red-100 active:text-red-500 transition-colors text-xs"
                 >
                   🗑️

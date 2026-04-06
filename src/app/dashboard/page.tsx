@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [recLangFilter, setRecLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
 
   useEffect(() => {
     loadDashboard();
@@ -131,10 +132,13 @@ export default function DashboardPage() {
             </p>
           </div>
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p className="text-2xl font-bold text-yellow-600">
-              {data.masteredFlashcards}/{data.totalFlashcards}
+            <p className="text-sm font-bold text-yellow-600 mt-1">
+              총 {data.totalFlashcards}개 카드중
             </p>
-            <p className="text-xs text-gray-400 mt-1">플래시카드 현황</p>
+            <p className="text-sm font-bold text-yellow-600">
+              {data.masteredFlashcards}개 암기 완료
+            </p>
+            <p className="text-xs text-gray-400 mt-1">플래시카드</p>
           </div>
         </div>
 
@@ -204,38 +208,78 @@ export default function DashboardPage() {
         )}
 
         {/* 플래시카드 추천 */}
-        {data.recommendations.length > 0 && (
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-            <p className="text-sm font-semibold text-gray-700 mb-1">
-              플래시카드 추천
-            </p>
-            <p className="text-xs text-gray-400 mb-3">
-              자주 번역한 문장이에요. 플래시카드에 추가해보세요.
-            </p>
-            {data.recommendations.map((rec) => (
-              <div
-                key={rec.id}
-                className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0"
-              >
-                <div className="flex-1">
-                  <p className="text-sm text-gray-900">{rec.original_text}</p>
-                  <p className="text-sm text-blue-600">{rec.translated_text}</p>
-                  {rec.pronunciation && (
-                    <p className="text-xs text-gray-400">{rec.pronunciation}</p>
-                  )}
-                  <p className="text-xs text-gray-300 mt-0.5">{rec.frequency}회 사용</p>
-                </div>
-                <button
-                  onClick={() => addToFlashcard(rec.id)}
-                  disabled={addingId === rec.id}
-                  className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors disabled:opacity-40"
-                >
-                  {addingId === rec.id ? "..." : "+ 추가"}
-                </button>
+        {data.recommendations.length > 0 && (() => {
+          const filteredRecs =
+            recLangFilter === "all"
+              ? data.recommendations.slice(0, 5)
+              : data.recommendations
+                  .filter((r) => r.direction.includes(recLangFilter))
+                  .slice(0, 5);
+
+          return (
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <p className="text-sm font-semibold text-gray-700 mb-1">
+                플래시카드 추천
+              </p>
+              <p className="text-xs text-gray-400 mb-3">
+                자주 번역한 문장이에요. 플래시카드에 추가해보세요.
+              </p>
+
+              {/* 언어 필터 */}
+              <div className="flex items-center bg-gray-100 rounded-full p-0.5 mb-3">
+                {(
+                  [
+                    { value: "all", label: "모두" },
+                    { value: "zh", label: "🇨🇳" },
+                    { value: "ja", label: "🇯🇵" },
+                    { value: "en", label: "🇺🇸" },
+                  ] as const
+                ).map((lang) => (
+                  <button
+                    key={lang.value}
+                    onClick={() => setRecLangFilter(lang.value)}
+                    className={`flex-1 py-1 rounded-full text-xs font-medium transition-colors ${
+                      recLangFilter === lang.value
+                        ? "bg-white text-gray-900 shadow-sm"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+
+              {filteredRecs.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  이 언어의 추천 문장이 없습니다
+                </p>
+              ) : (
+                filteredRecs.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900">{rec.original_text}</p>
+                      <p className="text-sm text-blue-600">{rec.translated_text}</p>
+                      {rec.pronunciation && (
+                        <p className="text-xs text-gray-400">{rec.pronunciation}</p>
+                      )}
+                      <p className="text-xs text-gray-300 mt-0.5">{rec.frequency}회 사용</p>
+                    </div>
+                    <button
+                      onClick={() => addToFlashcard(rec.id)}
+                      disabled={addingId === rec.id}
+                      className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors disabled:opacity-40"
+                    >
+                      {addingId === rec.id ? "..." : "+ 추가"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

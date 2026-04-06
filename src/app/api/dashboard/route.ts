@@ -109,10 +109,10 @@ export async function GET() {
     }
   });
 
-  // 빈도순 정렬 후 상위 5개 추천
+  // 빈도순 정렬 후 상위 30개 추천 (클라이언트에서 언어별 필터링)
   const recommendations = Array.from(freqMap.values())
     .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
+    .slice(0, 30)
     .map((item) => ({
       ...item.message,
       frequency: item.count,
