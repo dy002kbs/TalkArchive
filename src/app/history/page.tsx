@@ -76,7 +76,13 @@ export default function HistoryPage() {
     setSearchResults(filtered);
   };
 
+  const MAX_PINS = 3;
+
   const togglePin = async (id: string, currentPinned: boolean) => {
+    if (!currentPinned && pinned.length >= MAX_PINS) {
+      alert(`핀 고정은 최대 ${MAX_PINS}개까지 가능합니다.`);
+      return;
+    }
     await supabase
       .from("conversations")
       .update({ pinned: !currentPinned })
@@ -190,6 +196,7 @@ function ConversationCard({
   formatDate,
   onTap,
   onTogglePin,
+  onUpdateTitle,
   onDelete,
 }: {
   conversation: Conversation;
@@ -199,22 +206,55 @@ function ConversationCard({
   onUpdateTitle: (title: string) => void;
   onDelete: () => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(conversation.title);
+
   return (
     <div className="bg-white rounded-xl p-4 mb-2 shadow-sm border border-gray-100 flex items-center gap-3">
       <div
-        onClick={onTap}
+        onClick={() => !isEditing && onTap()}
         className="flex-1 cursor-pointer active:opacity-70 transition-opacity"
       >
-        <p className="text-base font-medium text-gray-900">
-          {conversation.pinned && "📌 "}
-          {conversation.title}
-        </p>
+        {isEditing ? (
+          <input
+            autoFocus
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onBlur={() => {
+              if (editTitle.trim()) onUpdateTitle(editTitle.trim());
+              setIsEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (editTitle.trim()) onUpdateTitle(editTitle.trim());
+                setIsEditing(false);
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="text-base font-medium text-gray-900 w-full border-b border-blue-500 outline-none bg-transparent"
+          />
+        ) : (
+          <p className="text-base font-medium text-gray-900">
+            {conversation.pinned && "📌 "}
+            {conversation.title}
+          </p>
+        )}
         <p className="text-sm text-gray-400 mt-1">
           {conversation.message_count}개 메시지 |{" "}
           {formatDate(conversation.created_at)}
         </p>
       </div>
       <div className="flex items-center gap-1">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditTitle(conversation.title);
+            setIsEditing(true);
+          }}
+          className="p-2 rounded-full bg-gray-100 text-gray-400 active:bg-gray-200 transition-colors text-sm"
+        >
+          ✏️
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();

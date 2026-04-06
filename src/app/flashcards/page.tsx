@@ -25,6 +25,7 @@ export default function FlashcardsPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"card" | "list">("card");
 
   useEffect(() => {
     loadFlashcards();
@@ -74,8 +75,8 @@ export default function FlashcardsPage() {
     setLoading(false);
   };
 
-  const toggleMastered = async () => {
-    const card = cards[currentIndex];
+  const toggleMastered = async (index: number) => {
+    const card = cards[index];
     const newMastered = !card.mastered;
     await supabase
       .from("flashcards")
@@ -84,15 +85,15 @@ export default function FlashcardsPage() {
 
     setCards((prev) =>
       prev.map((c, i) =>
-        i === currentIndex ? { ...c, mastered: newMastered } : c
+        i === index ? { ...c, mastered: newMastered } : c
       )
     );
   };
 
-  const deleteCard = async () => {
-    const card = cards[currentIndex];
+  const deleteCard = async (index: number) => {
+    const card = cards[index];
     await supabase.from("flashcards").delete().eq("id", card.id);
-    const newCards = cards.filter((_, i) => i !== currentIndex);
+    const newCards = cards.filter((_, i) => i !== index);
     setCards(newCards);
     if (currentIndex >= newCards.length && newCards.length > 0) {
       setCurrentIndex(newCards.length - 1);
@@ -134,92 +135,167 @@ export default function FlashcardsPage() {
   }
 
   const card = cards[currentIndex];
-  const isKoToZh = card.direction === "ko2zh";
+  const isKoSource = card.direction.startsWith("ko");
 
   return (
     <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
       <Header title="플래시카드" showBack onBack={() => router.push("/")} />
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6">
-        <p className="text-sm text-gray-400 mb-4">
-          {currentIndex + 1} / {cards.length}
-          <span className="ml-2 text-xs">
-            (무료 최대 {MAX_FREE_FLASHCARDS}개)
-          </span>
-        </p>
-
-        <div
-          onClick={() => setIsFlipped(!isFlipped)}
-          className={`w-full rounded-2xl shadow-md border p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer active:shadow-lg transition-shadow ${
-            card.mastered
-              ? "bg-yellow-50 border-yellow-200"
-              : "bg-white border-gray-100"
-          }`}
-        >
-          {!isFlipped ? (
-            <>
-              <p className="text-xl text-gray-900 text-center font-medium">
-                {isKoToZh ? card.original_text : card.translated_text}
-              </p>
-              <p className="text-sm text-gray-400 mt-6">탭해서 뒤집기</p>
-            </>
-          ) : (
-            <>
-              <p className="text-xl text-blue-600 text-center font-medium">
-                {isKoToZh ? card.translated_text : card.original_text}
-              </p>
-              {card.pronunciation && (
-                <p className="text-base text-gray-500 mt-2 text-center">
-                  {card.pronunciation}
-                </p>
-              )}
-              {card.pinyin_text && (
-                <p className="text-sm text-gray-400 mt-1 text-center italic">
-                  {card.pinyin_text}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-
-        <p className="text-xs text-gray-400 mt-4">
-          📍 {card.conversation_title}
-        </p>
-        {card.mastered && (
-          <p className="text-xs text-yellow-600 mt-1">⭐ 마스터 완료</p>
-        )}
-
-        <div className="flex items-center gap-6 mt-8">
+      {/* 모드 전환 탭 */}
+      <div className="px-4 pt-3">
+        <div className="flex items-center bg-gray-100 rounded-full p-0.5">
           <button
-            onClick={handlePrev}
-            className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
-          >
-            ◀ 이전
-          </button>
-          <button
-            onClick={toggleMastered}
-            className={`px-4 py-2.5 rounded-full text-sm font-medium transition-colors ${
-              card.mastered
-                ? "bg-yellow-200 text-yellow-800 active:bg-yellow-300"
-                : "bg-yellow-100 text-yellow-700 active:bg-yellow-200"
+            onClick={() => setViewMode("card")}
+            className={`flex-1 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              viewMode === "card"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500"
             }`}
           >
-            ⭐
+            카드 모드
           </button>
           <button
-            onClick={deleteCard}
-            className="px-4 py-2.5 rounded-full bg-red-50 text-red-500 text-sm font-medium active:bg-red-100 transition-colors"
+            onClick={() => setViewMode("list")}
+            className={`flex-1 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              viewMode === "list"
+                ? "bg-white text-gray-900 shadow-sm"
+                : "text-gray-500"
+            }`}
           >
-            🗑️
-          </button>
-          <button
-            onClick={handleNext}
-            className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
-          >
-            다음 ▶
+            목록 모드
           </button>
         </div>
+        <p className="text-xs text-gray-400 text-right mt-1">
+          {cards.length}/{MAX_FREE_FLASHCARDS}개 사용
+        </p>
       </div>
+
+      {viewMode === "card" ? (
+        /* 카드 모드 */
+        <div className="flex-1 flex flex-col items-center justify-center px-6">
+          <p className="text-sm text-gray-400 mb-4">
+            {currentIndex + 1} / {cards.length}
+          </p>
+
+          <div
+            onClick={() => setIsFlipped(!isFlipped)}
+            className={`w-full rounded-2xl shadow-md border p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer active:shadow-lg transition-shadow ${
+              card.mastered
+                ? "bg-yellow-50 border-yellow-200"
+                : "bg-white border-gray-100"
+            }`}
+          >
+            {!isFlipped ? (
+              <>
+                <p className="text-xl text-gray-900 text-center font-medium">
+                  {isKoSource ? card.original_text : card.translated_text}
+                </p>
+                <p className="text-sm text-gray-400 mt-6">탭해서 뒤집기</p>
+              </>
+            ) : (
+              <>
+                <p className="text-xl text-blue-600 text-center font-medium">
+                  {isKoSource ? card.translated_text : card.original_text}
+                </p>
+                {card.pronunciation && (
+                  <p className="text-base text-gray-500 mt-2 text-center">
+                    {card.pronunciation}
+                  </p>
+                )}
+                {card.pinyin_text && (
+                  <p className="text-sm text-gray-400 mt-1 text-center italic">
+                    {card.pinyin_text}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+
+          <p className="text-xs text-gray-400 mt-4">
+            📍 {card.conversation_title}
+          </p>
+          {card.mastered && (
+            <p className="text-xs text-yellow-600 mt-1">⭐ 마스터 완료</p>
+          )}
+
+          <div className="flex items-center gap-6 mt-8">
+            <button
+              onClick={handlePrev}
+              className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
+            >
+              ◀ 이전
+            </button>
+            <button
+              onClick={() => toggleMastered(currentIndex)}
+              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-colors ${
+                card.mastered
+                  ? "bg-yellow-200 text-yellow-800 active:bg-yellow-300"
+                  : "bg-yellow-100 text-yellow-700 active:bg-yellow-200"
+              }`}
+            >
+              ⭐
+            </button>
+            <button
+              onClick={() => deleteCard(currentIndex)}
+              className="px-4 py-2.5 rounded-full bg-red-50 text-red-500 text-sm font-medium active:bg-red-100 transition-colors"
+            >
+              🗑️
+            </button>
+            <button
+              onClick={handleNext}
+              className="px-5 py-2.5 rounded-full bg-gray-200 text-gray-600 text-sm font-medium active:bg-gray-300 transition-colors"
+            >
+              다음 ▶
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* 목록 모드 */
+        <div className="flex-1 overflow-y-auto px-4 py-2">
+          {cards.map((c, i) => (
+            <div
+              key={c.id}
+              className={`flex items-center gap-3 p-3 mb-2 rounded-xl border shadow-sm ${
+                c.mastered
+                  ? "bg-yellow-50 border-yellow-200"
+                  : "bg-white border-gray-100"
+              }`}
+            >
+              <div className="flex-1">
+                <p className="text-sm text-gray-900">
+                  {c.mastered && "⭐ "}
+                  {c.original_text}
+                </p>
+                <p className="text-sm text-blue-600">{c.translated_text}</p>
+                {c.pronunciation && (
+                  <p className="text-xs text-gray-400">{c.pronunciation}</p>
+                )}
+                <p className="text-xs text-gray-300 mt-0.5">
+                  📍 {c.conversation_title}
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => toggleMastered(i)}
+                  className={`p-1.5 rounded-full text-xs transition-colors ${
+                    c.mastered
+                      ? "bg-yellow-200 text-yellow-800"
+                      : "bg-gray-100 text-gray-400"
+                  }`}
+                >
+                  ⭐
+                </button>
+                <button
+                  onClick={() => deleteCard(i)}
+                  className="p-1.5 rounded-full bg-gray-100 text-gray-400 active:bg-red-100 active:text-red-500 transition-colors text-xs"
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

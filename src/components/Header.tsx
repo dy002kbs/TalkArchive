@@ -48,6 +48,12 @@ export default function Header({
             기록
           </Link>
           <Link
+            href="/dashboard"
+            className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors"
+          >
+            대시보드
+          </Link>
+          <Link
             href="/flashcards"
             className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors"
           >
