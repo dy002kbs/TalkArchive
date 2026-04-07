@@ -5,6 +5,14 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
 
+interface EnrichedData {
+  natural?: string;
+  naturalPronunciation?: string;
+  nuance?: string;
+  alternatives?: { text: string; note: string }[];
+  related?: { text: string; meaning: string }[];
+}
+
 interface Flashcard {
   id: string;
   message_id: string;
@@ -15,6 +23,7 @@ interface Flashcard {
   pronunciation: string;
   pinyin_text: string;
   conversation_title: string;
+  enriched_data: EnrichedData | null;
 }
 
 const MAX_FREE_FLASHCARDS = 20;
@@ -36,7 +45,7 @@ export default function FlashcardsPage() {
     const { data, error } = await supabase
       .from("flashcards")
       .select(`
-        id, message_id, mastered,
+        id, message_id, mastered, enriched_data,
         messages!inner(
           direction, original_text, translated_text, pronunciation, pinyin_text,
           conversations!inner(title)
@@ -69,6 +78,7 @@ export default function FlashcardsPage() {
         pronunciation: msg.pronunciation,
         pinyin_text: msg.pinyin_text,
         conversation_title: msg.conversations.title,
+        enriched_data: (fc as { enriched_data?: EnrichedData | null }).enriched_data || null,
       };
     });
 
@@ -201,7 +211,8 @@ export default function FlashcardsPage() {
             </button>
           </div>
           <p className="text-xs text-gray-400">
-            {filteredCards.length}개{langFilter !== "all" && ` (전체 ${cards.length}/${MAX_FREE_FLASHCARDS})`}
+            {filteredCards.length}개 / 최대 {MAX_FREE_FLASHCARDS}개
+            {langFilter !== "all" && ` (전체 ${cards.length})`}
           </p>
         </div>
       </div>
@@ -233,21 +244,45 @@ export default function FlashcardsPage() {
                     <p className="text-sm text-gray-400 mt-6">탭해서 뒤집기</p>
                   </>
                 ) : (
-                  <>
-                    <p className="text-xl text-blue-600 text-center font-medium">
-                      {isKoSource ? card.translated_text : card.original_text}
-                    </p>
-                    {card.pronunciation && (
-                      <p className="text-base text-gray-500 mt-2 text-center">
-                        {card.pronunciation}
-                      </p>
+                  <div className="w-full">
+                    {card.enriched_data?.natural ? (
+                      <>
+                        <p className="text-xs text-gray-400 text-center mb-1">✨ AI 추천 표현</p>
+                        <p className="text-xl text-blue-600 text-center font-medium">
+                          {card.enriched_data.natural}
+                        </p>
+                        {card.enriched_data.naturalPronunciation && (
+                          <p className="text-base text-gray-500 mt-1 text-center">
+                            {card.enriched_data.naturalPronunciation}
+                          </p>
+                        )}
+                        {card.enriched_data.nuance && (
+                          <p className="text-xs text-gray-500 mt-3 text-center px-2">
+                            💡 {card.enriched_data.nuance}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-gray-300 mt-2 text-center">
+                          기본 번역: {card.translated_text}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xl text-blue-600 text-center font-medium">
+                          {isKoSource ? card.translated_text : card.original_text}
+                        </p>
+                        {card.pronunciation && (
+                          <p className="text-base text-gray-500 mt-2 text-center">
+                            {card.pronunciation}
+                          </p>
+                        )}
+                        {card.pinyin_text && (
+                          <p className="text-sm text-gray-400 mt-1 text-center italic">
+                            {card.pinyin_text}
+                          </p>
+                        )}
+                      </>
                     )}
-                    {card.pinyin_text && (
-                      <p className="text-sm text-gray-400 mt-1 text-center italic">
-                        {card.pinyin_text}
-                      </p>
-                    )}
-                  </>
+                  </div>
                 )}
               </div>
 

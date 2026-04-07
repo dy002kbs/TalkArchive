@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
+import AddFlashcardModal from "@/components/AddFlashcardModal";
+import { EnrichedData } from "@/components/EnrichModal";
 
 interface DashboardData {
   totalConversations: number;
@@ -39,7 +41,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [addingId, setAddingId] = useState<string | null>(null);
+  const [enrichTarget, setEnrichTarget] = useState<DashboardData["recommendations"][number] | null>(null);
   const [recLangFilter, setRecLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
   const [period, setPeriod] = useState<Period>(7);
 
@@ -55,35 +57,41 @@ export default function DashboardPage() {
     setLoading(false);
   };
 
-  const addToFlashcard = async (messageId: string) => {
+  const startAddToFlashcard = (rec: DashboardData["recommendations"][number]) => {
     if (!data) return;
     if (data.totalFlashcards >= MAX_FREE_FLASHCARDS) {
       alert(`무료 플래시카드는 최대 ${MAX_FREE_FLASHCARDS}개까지 가능합니다.`);
       return;
     }
+    setEnrichTarget(rec);
+  };
 
-    setAddingId(messageId);
+  const saveFlashcard = async (enriched: EnrichedData | null) => {
+    if (!enrichTarget) return;
     const { error } = await supabase
       .from("flashcards")
-      .insert({ message_id: messageId });
+      .insert({
+        message_id: enrichTarget.id,
+        enriched_data: enriched,
+      });
 
     if (error) {
       alert("추가에 실패했습니다.");
-    } else {
-      // 추천 목록에서 제거 + 카운트 업데이트
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              totalFlashcards: prev.totalFlashcards + 1,
-              recommendations: prev.recommendations.filter(
-                (r) => r.id !== messageId
-              ),
-            }
-          : prev
-      );
+      return;
     }
-    setAddingId(null);
+
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            totalFlashcards: prev.totalFlashcards + 1,
+            recommendations: prev.recommendations.filter(
+              (r) => r.id !== enrichTarget.id
+            ),
+          }
+        : prev
+    );
+    setEnrichTarget(null);
   };
 
   if (loading || !data) {
@@ -298,11 +306,10 @@ export default function DashboardPage() {
                       <p className="text-xs text-gray-300 mt-0.5">{rec.frequency}회 사용</p>
                     </div>
                     <button
-                      onClick={() => addToFlashcard(rec.id)}
-                      disabled={addingId === rec.id}
-                      className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors disabled:opacity-40"
+                      onClick={() => startAddToFlashcard(rec)}
+                      className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors"
                     >
-                      {addingId === rec.id ? "..." : "+ 추가"}
+                      + 추가
                     </button>
                   </div>
                 ))
@@ -311,6 +318,17 @@ export default function DashboardPage() {
           );
         })()}
       </div>
+
+      {enrichTarget && (
+        <AddFlashcardModal
+          originalText={enrichTarget.original_text}
+          translatedText={enrichTarget.translated_text}
+          pronunciation={enrichTarget.pronunciation}
+          direction={enrichTarget.direction}
+          onClose={() => setEnrichTarget(null)}
+          onSave={saveFlashcard}
+        />
+      )}
     </div>
   );
 }
