@@ -8,7 +8,9 @@ import Header from "@/components/Header";
 interface EnrichedData {
   natural?: string;
   naturalPronunciation?: string;
+  wordBreakdown?: { word: string; reading: string; meaning: string }[];
   nuance?: string;
+  example?: { text: string; translation: string };
   alternatives?: { text: string; note: string }[];
   related?: { text: string; meaning: string }[];
 }
@@ -248,22 +250,38 @@ export default function FlashcardsPage() {
                     {card.enriched_data?.natural ? (
                       <>
                         <p className="text-xs text-gray-400 text-center mb-1">✨ AI 추천 표현</p>
-                        <p className="text-xl text-blue-600 text-center font-medium">
+                        <p className="text-lg text-blue-600 text-center font-medium">
                           {card.enriched_data.natural}
                         </p>
                         {card.enriched_data.naturalPronunciation && (
-                          <p className="text-base text-gray-500 mt-1 text-center">
+                          <p className="text-sm text-gray-500 mt-1 text-center">
                             {card.enriched_data.naturalPronunciation}
                           </p>
+                        )}
+                        {card.enriched_data.wordBreakdown && card.enriched_data.wordBreakdown.length > 0 && (
+                          <div className="mt-3 px-2 text-left">
+                            <p className="text-[10px] text-gray-400 mb-1">📝 단어</p>
+                            {card.enriched_data.wordBreakdown.map((w, i) => (
+                              <p key={i} className="text-xs text-gray-600">
+                                <span className="font-medium">{w.word}</span>
+                                {w.reading && <span className="text-gray-400"> ({w.reading})</span>}
+                                <span className="text-gray-500"> — {w.meaning}</span>
+                              </p>
+                            ))}
+                          </div>
                         )}
                         {card.enriched_data.nuance && (
                           <p className="text-xs text-gray-500 mt-3 text-center px-2">
                             💡 {card.enriched_data.nuance}
                           </p>
                         )}
-                        <p className="text-[10px] text-gray-300 mt-2 text-center">
-                          기본 번역: {card.translated_text}
-                        </p>
+                        {card.enriched_data.example?.text && (
+                          <div className="mt-3 px-2 text-left">
+                            <p className="text-[10px] text-gray-400 mb-0.5">📖 예문</p>
+                            <p className="text-xs text-gray-700">{card.enriched_data.example.text}</p>
+                            <p className="text-xs text-gray-500">{card.enriched_data.example.translation}</p>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>

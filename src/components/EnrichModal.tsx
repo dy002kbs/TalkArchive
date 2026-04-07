@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 export interface EnrichedData {
   natural: string;
   naturalPronunciation: string;
+  wordBreakdown?: { word: string; reading: string; meaning: string }[];
   nuance: string;
+  example?: { text: string; translation: string };
   alternatives: { text: string; note: string }[];
   related: { text: string; meaning: string }[];
 }
@@ -115,12 +117,43 @@ export default function EnrichModal({
                 )}
               </div>
 
+              {enriched.wordBreakdown && enriched.wordBreakdown.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 mb-1">
+                    📝 단어 분해
+                  </p>
+                  <div className="space-y-1">
+                    {enriched.wordBreakdown.map((w, i) => (
+                      <div key={i} className="text-sm flex items-baseline gap-2">
+                        <span className="text-gray-900 font-medium">{w.word}</span>
+                        {w.reading && (
+                          <span className="text-xs text-gray-400">({w.reading})</span>
+                        )}
+                        <span className="text-xs text-gray-500">— {w.meaning}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {enriched.nuance && (
                 <div>
                   <p className="text-xs font-semibold text-gray-400 mb-1">
                     💡 뉘앙스
                   </p>
                   <p className="text-sm text-gray-700">{enriched.nuance}</p>
+                </div>
+              )}
+
+              {enriched.example?.text && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 mb-1">
+                    📖 실전 예문
+                  </p>
+                  <p className="text-sm text-gray-900">{enriched.example.text}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {enriched.example.translation}
+                  </p>
                 </div>
               )}
 

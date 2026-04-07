@@ -28,7 +28,7 @@ export default function Header({
         )}
         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
         {!showBack && (
-          <span className="text-xs text-gray-400 ml-1">v0.3.0</span>
+          <span className="text-xs text-gray-400 ml-1">v0.3.1</span>
         )}
       </div>
       {!showBack && (

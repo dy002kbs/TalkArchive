@@ -33,28 +33,37 @@ export async function POST(request: NextRequest) {
 Source (${lang.source}): ${originalText}
 Current translation (${lang.target}): ${translatedText}
 
-Analyze the current translation and provide a richer learning resource. Respond in JSON only, no markdown:
+Analyze the current translation and provide a learning resource that's helpful for both BEGINNERS and intermediate learners. Respond in JSON only, no markdown:
 
 {
-  "natural": "the most natural ${lang.target} expression for this situation (use the current translation if it's already natural)",
-  "naturalPronunciation": "pronunciation in 한글 (Korean phonetic) — only if target is Chinese or Japanese, otherwise empty string",
-  "nuance": "1-2 sentences in Korean about the tone, formality, or context. Be concise.",
+  "natural": "the most natural ${lang.target} expression for this situation (use current translation if already natural)",
+  "naturalPronunciation": "한글 phonetic for the natural expression — only if target is Chinese or Japanese, else empty string",
+  "wordBreakdown": [
+    {"word": "word in ${lang.target}", "reading": "한글 발음", "meaning": "한국어 뜻"}
+  ],
+  "nuance": "1-2 sentences in Korean. Explain tone/formality/context concisely. Beginner-friendly.",
+  "example": {
+    "text": "a simple realistic example sentence in ${lang.target} using the natural expression",
+    "translation": "Korean translation of the example"
+  },
   "alternatives": [
-    {"text": "another way to say it", "note": "in Korean: when to use this version"}
+    {"text": "another way to say it", "note": "in Korean: when/why to use this"}
   ],
   "related": [
-    {"text": "related expression", "meaning": "Korean meaning"}
+    {"text": "related expression in ${lang.target}", "meaning": "Korean meaning"}
   ]
 }
 
 Rules:
 - "natural" must be in ${lang.target}
-- "nuance", "note", "meaning" must be in Korean
+- "nuance", "note", "meaning", "translation", "wordBreakdown.meaning" must be in Korean
+- "wordBreakdown": break the natural expression into 3-6 key words/chunks. Include pronunciation in 한글 for Chinese/Japanese (empty string for English)
+- "example": realistic situation, use the natural expression naturally
 - Provide 1-2 alternatives and 2-3 related expressions max
-- If the current translation is already perfect, "natural" can be the same as the current translation
-- For Chinese: include 한글 발음 (e.g., 니하오) in naturalPronunciation
-- For Japanese: include 한글 발음 (e.g., 콘니치와) in naturalPronunciation
-- Output ONLY valid JSON, no \`\`\`json wrapper`;
+- For Chinese: include 한글 발음 in naturalPronunciation and wordBreakdown.reading
+- For Japanese: include 한글 발음 in naturalPronunciation and wordBreakdown.reading
+- For English: leave naturalPronunciation and reading as empty strings
+- Output ONLY valid JSON, no markdown wrapper`;
 
   try {
     const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
