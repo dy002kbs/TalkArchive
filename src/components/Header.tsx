@@ -7,6 +7,7 @@ interface HeaderProps {
   showBack?: boolean;
   onBack?: () => void;
   onNewConversation?: () => void;
+  showFlashcardLink?: boolean;
 }
 
 export default function Header({
@@ -14,6 +15,7 @@ export default function Header({
   showBack = false,
   onBack,
   onNewConversation,
+  showFlashcardLink = false,
 }: HeaderProps) {
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
@@ -28,9 +30,17 @@ export default function Header({
         )}
         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
         {!showBack && (
-          <span className="text-xs text-gray-400 ml-1">v0.3.1</span>
+          <span className="text-xs text-gray-400 ml-1">v0.3.2</span>
         )}
       </div>
+      {showBack && showFlashcardLink && (
+        <Link
+          href="/flashcards"
+          className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors"
+        >
+          학습
+        </Link>
+      )}
       {!showBack && (
         <div className="flex items-center gap-2">
           {onNewConversation && (

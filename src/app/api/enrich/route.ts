@@ -44,13 +44,14 @@ Analyze the current translation and provide a learning resource that's helpful f
   "nuance": "1-2 sentences in Korean. Explain tone/formality/context concisely. Beginner-friendly.",
   "example": {
     "text": "a simple realistic example sentence in ${lang.target} using the natural expression",
+    "reading": "한글 phonetic of the example — only for Chinese/Japanese, else empty string",
     "translation": "Korean translation of the example"
   },
   "alternatives": [
-    {"text": "another way to say it", "note": "in Korean: when/why to use this"}
+    {"text": "another way to say it", "reading": "한글 phonetic — empty for English", "note": "in Korean: when/why to use this"}
   ],
   "related": [
-    {"text": "related expression in ${lang.target}", "meaning": "Korean meaning"}
+    {"text": "related expression in ${lang.target}", "reading": "한글 phonetic — empty for English", "meaning": "Korean meaning"}
   ]
 }
 
@@ -58,7 +59,8 @@ Rules:
 - "natural" must be in ${lang.target}
 - "nuance", "note", "meaning", "translation", "wordBreakdown.meaning" must be in Korean
 - "wordBreakdown": break the natural expression into 3-6 key words/chunks. Include pronunciation in 한글 for Chinese/Japanese (empty string for English)
-- "example": realistic situation, use the natural expression naturally
+- "example": realistic situation, use the natural expression naturally. Include 한글 reading for Chinese/Japanese (empty for English)
+- "alternatives" and "related": include 한글 reading for Chinese/Japanese (empty string for English)
 - Provide 1-2 alternatives and 2-3 related expressions max
 - For Chinese: include 한글 발음 in naturalPronunciation and wordBreakdown.reading
 - For Japanese: include 한글 발음 in naturalPronunciation and wordBreakdown.reading

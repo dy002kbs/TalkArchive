@@ -4,15 +4,16 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
+import FlashcardDetailModal from "@/components/FlashcardDetailModal";
 
 interface EnrichedData {
   natural?: string;
   naturalPronunciation?: string;
   wordBreakdown?: { word: string; reading: string; meaning: string }[];
   nuance?: string;
-  example?: { text: string; translation: string };
-  alternatives?: { text: string; note: string }[];
-  related?: { text: string; meaning: string }[];
+  example?: { text: string; reading?: string; translation: string };
+  alternatives?: { text: string; reading?: string; note: string }[];
+  related?: { text: string; reading?: string; meaning: string }[];
 }
 
 interface Flashcard {
@@ -38,6 +39,7 @@ export default function FlashcardsPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"card" | "list">("card");
   const [langFilter, setLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
+  const [detailCard, setDetailCard] = useState<Flashcard | null>(null);
 
   useEffect(() => {
     loadFlashcards();
@@ -232,12 +234,23 @@ export default function FlashcardsPage() {
 
               <div
                 onClick={() => setIsFlipped(!isFlipped)}
-                className={`w-full rounded-2xl shadow-md border p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer active:shadow-lg transition-shadow ${
+                className={`w-full relative rounded-2xl shadow-md border p-8 min-h-[200px] flex flex-col items-center justify-center cursor-pointer active:shadow-lg transition-shadow ${
                   card.mastered
                     ? "bg-yellow-50 border-yellow-200"
                     : "bg-white border-gray-100"
                 }`}
               >
+                {isFlipped && card.enriched_data && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailCard(card);
+                    }}
+                    className="absolute bottom-3 right-3 px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors"
+                  >
+                    📖 상세
+                  </button>
+                )}
                 {!isFlipped ? (
                   <>
                     <p className="text-xl text-gray-900 text-center font-medium">
@@ -271,14 +284,20 @@ export default function FlashcardsPage() {
                           </div>
                         )}
                         {card.enriched_data.nuance && (
-                          <p className="text-xs text-gray-500 mt-3 text-center px-2">
-                            💡 {card.enriched_data.nuance}
-                          </p>
+                          <div className="mt-3 px-2 text-left">
+                            <p className="text-[10px] text-gray-400 mb-1">💡 뉘앙스</p>
+                            <p className="text-xs text-gray-500">
+                              {card.enriched_data.nuance}
+                            </p>
+                          </div>
                         )}
                         {card.enriched_data.example?.text && (
                           <div className="mt-3 px-2 text-left">
                             <p className="text-[10px] text-gray-400 mb-0.5">📖 예문</p>
                             <p className="text-xs text-gray-700">{card.enriched_data.example.text}</p>
+                            {card.enriched_data.example.reading && (
+                              <p className="text-xs text-gray-400">{card.enriched_data.example.reading}</p>
+                            )}
                             <p className="text-xs text-gray-500">{card.enriched_data.example.translation}</p>
                           </div>
                         )}
@@ -375,6 +394,14 @@ export default function FlashcardsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-1">
+                {c.enriched_data && (
+                  <button
+                    onClick={() => setDetailCard(c)}
+                    className="p-1.5 rounded-full bg-blue-50 text-blue-600 active:bg-blue-100 transition-colors text-xs"
+                  >
+                    📖
+                  </button>
+                )}
                 <button
                   onClick={() => toggleMasteredById(c.id)}
                   className={`p-1.5 rounded-full text-xs transition-colors ${
@@ -395,6 +422,16 @@ export default function FlashcardsPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {detailCard && detailCard.enriched_data && (
+        <FlashcardDetailModal
+          originalText={detailCard.original_text}
+          translatedText={detailCard.translated_text}
+          pronunciation={detailCard.pronunciation}
+          enriched={detailCard.enriched_data}
+          onClose={() => setDetailCard(null)}
+        />
       )}
     </div>
   );

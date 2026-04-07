@@ -54,7 +54,7 @@ export default function AddFlashcardModal({
             </button>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-3 mb-5">
+          <div className="bg-gray-50 rounded-xl p-3 mb-5 text-center">
             <p className="text-sm text-gray-900">{originalText}</p>
             <p className="text-sm text-blue-600 mt-1">{translatedText}</p>
             {pronunciation && (

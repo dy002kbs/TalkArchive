@@ -7,9 +7,9 @@ export interface EnrichedData {
   naturalPronunciation: string;
   wordBreakdown?: { word: string; reading: string; meaning: string }[];
   nuance: string;
-  example?: { text: string; translation: string };
-  alternatives: { text: string; note: string }[];
-  related: { text: string; meaning: string }[];
+  example?: { text: string; reading?: string; translation: string };
+  alternatives: { text: string; reading?: string; note: string }[];
+  related: { text: string; reading?: string; meaning: string }[];
 }
 
 interface EnrichModalProps {
@@ -79,7 +79,7 @@ export default function EnrichModal({
             </button>
           </div>
 
-          <div className="bg-gray-50 rounded-xl p-3 mb-4">
+          <div className="bg-gray-50 rounded-xl p-3 mb-4 text-center">
             <p className="text-sm text-gray-900">{originalText}</p>
             <p className="text-sm text-blue-600 mt-1">{translatedText}</p>
           </div>
@@ -151,6 +151,11 @@ export default function EnrichModal({
                     📖 실전 예문
                   </p>
                   <p className="text-sm text-gray-900">{enriched.example.text}</p>
+                  {enriched.example.reading && (
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {enriched.example.reading}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 mt-0.5">
                     {enriched.example.translation}
                   </p>
@@ -162,10 +167,13 @@ export default function EnrichModal({
                   <p className="text-xs font-semibold text-gray-400 mb-1">
                     🔄 다른 표현
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {enriched.alternatives.map((alt, i) => (
                       <div key={i} className="text-sm">
                         <p className="text-gray-900">{alt.text}</p>
+                        {alt.reading && (
+                          <p className="text-xs text-gray-400">{alt.reading}</p>
+                        )}
                         <p className="text-xs text-gray-500">{alt.note}</p>
                       </div>
                     ))}
@@ -178,10 +186,13 @@ export default function EnrichModal({
                   <p className="text-xs font-semibold text-gray-400 mb-1">
                     📚 함께 알면 좋은 것
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {enriched.related.map((rel, i) => (
                       <div key={i} className="text-sm">
                         <p className="text-gray-900">{rel.text}</p>
+                        {rel.reading && (
+                          <p className="text-xs text-gray-400">{rel.reading}</p>
+                        )}
                         <p className="text-xs text-gray-500">{rel.meaning}</p>
                       </div>
                     ))}

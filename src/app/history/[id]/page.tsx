@@ -164,7 +164,12 @@ export default function ConversationDetailPage({
 
   return (
     <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
-      <Header title={title || "대화"} showBack onBack={() => router.push("/history")} />
+      <Header
+        title={title || "대화"}
+        showBack
+        onBack={() => router.push("/history")}
+        showFlashcardLink
+      />
 
       <div className="flex-1 overflow-y-auto pb-4">
         {loading ? (
