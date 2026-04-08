@@ -7,6 +7,14 @@ import Header from "@/components/Header";
 import AddFlashcardModal from "@/components/AddFlashcardModal";
 import { EnrichedData } from "@/components/EnrichModal";
 
+interface WordRecommendation {
+  word: string;
+  reading: string;
+  meaning: string;
+  direction: string;
+  count: number;
+}
+
 interface DashboardData {
   totalConversations: number;
   totalMessages: number;
@@ -25,6 +33,7 @@ interface DashboardData {
     pronunciation: string;
     frequency: number;
   }[];
+  wordRecommendations: WordRecommendation[];
 }
 
 type Period = 7 | 14 | 30;
@@ -44,6 +53,7 @@ export default function DashboardPage() {
   const [enrichTarget, setEnrichTarget] = useState<DashboardData["recommendations"][number] | null>(null);
   const [recLangFilter, setRecLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
   const [period, setPeriod] = useState<Period>(7);
+  const [recType, setRecType] = useState<"sentence" | "word">("sentence");
 
   useEffect(() => {
     loadDashboard(period);
@@ -64,6 +74,65 @@ export default function DashboardPage() {
       return;
     }
     setEnrichTarget(rec);
+  };
+
+  const startAddWord = async (w: WordRecommendation) => {
+    if (!data) return;
+    if (data.totalFlashcards >= MAX_FREE_FLASHCARDS) {
+      alert(`무료 플래시카드는 최대 ${MAX_FREE_FLASHCARDS}개까지 가능합니다.`);
+      return;
+    }
+
+    // 단어 학습용 메시지 새로 생성
+    let conversationId: string;
+    const { data: existingConv } = await supabase
+      .from("conversations")
+      .select("id")
+      .eq("title", "단어장")
+      .maybeSingle();
+
+    if (existingConv) {
+      conversationId = existingConv.id;
+    } else {
+      const { data: newConv, error: convErr } = await supabase
+        .from("conversations")
+        .insert({ title: "단어장" })
+        .select("id")
+        .single();
+      if (convErr || !newConv) {
+        alert("단어 추가에 실패했습니다.");
+        return;
+      }
+      conversationId = newConv.id;
+    }
+
+    // 단어로 메시지 생성 (단어가 source인 direction을 sourceLang->KO로 매핑)
+    const { data: newMsg, error: msgErr } = await supabase
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        direction: w.direction,
+        original_text: w.meaning,
+        translated_text: w.word,
+        pronunciation: w.reading,
+        pinyin_text: "",
+      })
+      .select("id, original_text, translated_text, direction, pronunciation")
+      .single();
+
+    if (msgErr || !newMsg) {
+      alert("단어 추가에 실패했습니다.");
+      return;
+    }
+
+    setEnrichTarget({
+      id: newMsg.id,
+      original_text: newMsg.original_text,
+      translated_text: newMsg.translated_text,
+      direction: newMsg.direction,
+      pronunciation: newMsg.pronunciation,
+      frequency: w.count,
+    });
   };
 
   const saveFlashcard = async (enriched: EnrichedData | null) => {
@@ -97,7 +166,12 @@ export default function DashboardPage() {
   if (loading || !data) {
     return (
       <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
-        <Header title="학습 대시보드" showBack onBack={() => router.push("/")} />
+        <Header
+        title="대시보드"
+        showBack
+        onBack={() => router.push("/")}
+        showFlashcardLink
+      />
         <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
           로딩 중...
         </div>
@@ -109,49 +183,60 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
-      <Header title="학습 대시보드" showBack onBack={() => router.push("/")} />
+      <Header
+        title="대시보드"
+        showBack
+        onBack={() => router.push("/")}
+        showFlashcardLink
+      />
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {/* 요약 카드 */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p className="text-2xl font-bold text-gray-900">
+        <div className="grid grid-cols-4 gap-2">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 text-center">
+            <p className="text-xl font-bold text-gray-900">
               {data.totalConversations}
             </p>
-            <p className="text-xs text-gray-400 mt-1">총 대화 세션</p>
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
+              총 대화<br />세션
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p className="text-2xl font-bold text-gray-900">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 text-center">
+            <p className="text-xl font-bold text-gray-900">
               {data.totalMessages}
             </p>
-            <p className="text-xs text-gray-400 mt-1">총 번역 문장</p>
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
+              총 번역<br />문장
+            </p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p className="text-2xl font-bold text-blue-600">
+          <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 text-center">
+            <p className="text-xl font-bold text-blue-600">
               {data.currentPeriodCount}
             </p>
-            <p className="text-xs text-gray-400 mt-1">
-              최근 {data.periodDays}일 번역{" "}
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
+              최근 {data.periodDays}일
               {data.periodChange !== 0 && (
-                <span
-                  className={
-                    data.periodChange > 0 ? "text-green-500" : "text-red-500"
-                  }
-                >
-                  ({data.periodChange > 0 ? "+" : ""}
-                  {data.periodChange}%)
-                </span>
+                <>
+                  <br />
+                  <span
+                    className={
+                      data.periodChange > 0 ? "text-green-500" : "text-red-500"
+                    }
+                  >
+                    ({data.periodChange > 0 ? "+" : ""}
+                    {data.periodChange}%)
+                  </span>
+                </>
               )}
             </p>
           </div>
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
-            <p className="text-sm font-bold text-yellow-600 mt-1">
-              총 {data.totalFlashcards}개 카드중
+          <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 text-center">
+            <p className="text-xl font-bold text-yellow-600">
+              {data.masteredFlashcards}/{data.totalFlashcards}
             </p>
-            <p className="text-sm font-bold text-yellow-600">
-              {data.masteredFlashcards}개 암기 완료
+            <p className="text-[10px] text-gray-400 mt-1 leading-tight">
+              마스터카드<br />암기 완료
             </p>
-            <p className="text-xs text-gray-400 mt-1">플래시카드</p>
           </div>
         </div>
 
@@ -246,53 +331,83 @@ export default function DashboardPage() {
         )}
 
         {/* 플래시카드 추천 */}
-        {data.recommendations.length > 0 && (() => {
-          const filteredRecs =
-            recLangFilter === "all"
-              ? data.recommendations.slice(0, 5)
-              : data.recommendations
-                  .filter((r) => r.direction.includes(recLangFilter))
-                  .slice(0, 5);
+        {(data.recommendations.length > 0 || (data.wordRecommendations && data.wordRecommendations.length > 0)) && (
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <p className="text-sm font-semibold text-gray-700 mb-1">
+              플래시카드 추천
+            </p>
+            <p className="text-xs text-gray-400 mb-3">
+              {recType === "sentence"
+                ? "자주 번역한 문장이에요. 플래시카드에 추가해보세요."
+                : "AI 카드에서 자주 등장한 단어예요. 단어로도 학습해보세요."}
+            </p>
 
-          return (
-            <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-              <p className="text-sm font-semibold text-gray-700 mb-1">
-                플래시카드 추천
-              </p>
-              <p className="text-xs text-gray-400 mb-3">
-                자주 번역한 문장이에요. 플래시카드에 추가해보세요.
-              </p>
+            {/* 문장/단어 토글 */}
+            <div className="flex items-center bg-gray-100 rounded-full p-0.5 mb-2">
+              <button
+                onClick={() => setRecType("sentence")}
+                className={`flex-1 py-1 rounded-full text-xs font-medium transition-colors ${
+                  recType === "sentence"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500"
+                }`}
+              >
+                📝 문장
+              </button>
+              <button
+                onClick={() => setRecType("word")}
+                className={`flex-1 py-1 rounded-full text-xs font-medium transition-colors ${
+                  recType === "word"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500"
+                }`}
+              >
+                🔤 단어
+              </button>
+            </div>
 
-              {/* 언어 필터 */}
-              <div className="flex items-center bg-gray-100 rounded-full p-0.5 mb-3">
-                {(
-                  [
-                    { value: "all", label: "모두" },
-                    { value: "zh", label: "🇨🇳" },
-                    { value: "ja", label: "🇯🇵" },
-                    { value: "en", label: "🇺🇸" },
-                  ] as const
-                ).map((lang) => (
-                  <button
-                    key={lang.value}
-                    onClick={() => setRecLangFilter(lang.value)}
-                    className={`flex-1 py-1 rounded-full text-xs font-medium transition-colors ${
-                      recLangFilter === lang.value
-                        ? "bg-white text-gray-900 shadow-sm"
-                        : "text-gray-500"
-                    }`}
-                  >
-                    {lang.label}
-                  </button>
-                ))}
-              </div>
+            {/* 언어 필터 */}
+            <div className="flex items-center bg-gray-100 rounded-full p-0.5 mb-3">
+              {(
+                [
+                  { value: "all", label: "모두" },
+                  { value: "zh", label: "🇨🇳" },
+                  { value: "ja", label: "🇯🇵" },
+                  { value: "en", label: "🇺🇸" },
+                ] as const
+              ).map((lang) => (
+                <button
+                  key={lang.value}
+                  onClick={() => setRecLangFilter(lang.value)}
+                  className={`flex-1 py-1 rounded-full text-xs font-medium transition-colors ${
+                    recLangFilter === lang.value
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500"
+                  }`}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
 
-              {filteredRecs.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  이 언어의 추천 문장이 없습니다
-                </p>
-              ) : (
-                filteredRecs.map((rec) => (
+            {recType === "sentence" ? (
+              (() => {
+                const filteredRecs =
+                  recLangFilter === "all"
+                    ? data.recommendations.slice(0, 10)
+                    : data.recommendations
+                        .filter((r) => r.direction.includes(recLangFilter))
+                        .slice(0, 10);
+
+                if (filteredRecs.length === 0) {
+                  return (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      이 언어의 추천 문장이 없습니다
+                    </p>
+                  );
+                }
+
+                return filteredRecs.map((rec) => (
                   <div
                     key={rec.id}
                     className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0"
@@ -312,11 +427,50 @@ export default function DashboardPage() {
                       + 추가
                     </button>
                   </div>
-                ))
-              )}
-            </div>
-          );
-        })()}
+                ));
+              })()
+            ) : (
+              (() => {
+                const filteredWords =
+                  recLangFilter === "all"
+                    ? (data.wordRecommendations || []).slice(0, 10)
+                    : (data.wordRecommendations || [])
+                        .filter((w) => w.direction.includes(recLangFilter))
+                        .slice(0, 10);
+
+                if (filteredWords.length === 0) {
+                  return (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      AI 카드를 추가하면 단어 추천이 나타나요
+                    </p>
+                  );
+                }
+
+                return filteredWords.map((w, i) => (
+                  <div
+                    key={`${w.direction}::${w.word}::${i}`}
+                    className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0"
+                  >
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-900 font-medium">{w.word}</p>
+                      {w.reading && (
+                        <p className="text-xs text-gray-400">{w.reading}</p>
+                      )}
+                      <p className="text-xs text-gray-500">{w.meaning}</p>
+                      <p className="text-xs text-gray-300 mt-0.5">{w.count}개 카드에 등장</p>
+                    </div>
+                    <button
+                      onClick={() => startAddWord(w)}
+                      className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors"
+                    >
+                      + 추가
+                    </button>
+                  </div>
+                ));
+              })()
+            )}
+          </div>
+        )}
       </div>
 
       {enrichTarget && (

@@ -58,7 +58,12 @@ export default function ChatInput({
     setText("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // IME(한글/중국어/일본어) 조합 중인 경우 Enter 무시
+    // nativeEvent.isComposing 또는 keyCode 229로 체크
+    if (e.nativeEvent.isComposing || e.keyCode === 229) {
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSubmit();

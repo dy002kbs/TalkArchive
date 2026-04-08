@@ -124,6 +124,52 @@ export async function GET(request: NextRequest) {
       frequency: item.count,
     }));
 
+  // 단어 추천 — 모든 플래시카드의 wordBreakdown 집계
+  const { data: allFlashcards } = await supabase
+    .from("flashcards")
+    .select(`
+      enriched_data,
+      messages!inner(direction)
+    `);
+
+  type WordEntry = {
+    word: string;
+    reading: string;
+    meaning: string;
+    direction: string;
+    count: number;
+  };
+
+  const wordFreqMap = new Map<string, WordEntry>();
+
+  (allFlashcards || []).forEach((fc) => {
+    const enriched = (fc as { enriched_data?: { wordBreakdown?: { word: string; reading: string; meaning: string }[] } }).enriched_data;
+    if (!enriched?.wordBreakdown) return;
+    const msg = fc.messages as unknown as { direction: string };
+    const direction = msg?.direction || "";
+
+    enriched.wordBreakdown.forEach((w) => {
+      // 키: word + direction (같은 단어를 다른 언어로 분리)
+      const key = `${direction}::${w.word}`;
+      const existing = wordFreqMap.get(key);
+      if (existing) {
+        existing.count++;
+      } else {
+        wordFreqMap.set(key, {
+          word: w.word,
+          reading: w.reading,
+          meaning: w.meaning,
+          direction,
+          count: 1,
+        });
+      }
+    });
+  });
+
+  const wordRecommendations = Array.from(wordFreqMap.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 30);
+
   return NextResponse.json({
     totalConversations: totalConversations || 0,
     totalMessages: totalMessages || 0,
@@ -135,5 +181,6 @@ export async function GET(request: NextRequest) {
     totalFlashcards: totalFlashcards || 0,
     masteredFlashcards: masteredFlashcards || 0,
     recommendations,
+    wordRecommendations,
   });
 }
