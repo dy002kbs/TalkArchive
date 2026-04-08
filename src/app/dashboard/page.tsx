@@ -50,22 +50,29 @@ export default function DashboardPage() {
   const router = useRouter();
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recLoading, setRecLoading] = useState(true);
   const [enrichTarget, setEnrichTarget] = useState<DashboardData["recommendations"][number] | null>(null);
   const [recLangFilter, setRecLangFilter] = useState<"all" | "zh" | "ja" | "en">("all");
   const [period, setPeriod] = useState<Period>(7);
   const [recType, setRecType] = useState<"sentence" | "word">("sentence");
 
   useEffect(() => {
-    loadDashboard(period);
+    loadStats(period);
   }, [period]);
 
-  const loadDashboard = async (periodDays: Period) => {
-    const cacheKey = `dashboard_${periodDays}`;
-    // 1. sessionStorage에 캐시 있으면 즉시 표시 (체감 0ms)
+  // 추천은 한 번만 로드 (period와 무관)
+  useEffect(() => {
+    loadRecommendations();
+  }, []);
+
+  const loadStats = async (periodDays: Period) => {
+    const cacheKey = `dashboard_stats_${periodDays}`;
+    // sessionStorage 캐시 즉시 표시
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
-        setData(JSON.parse(cached));
+        const cachedData = JSON.parse(cached);
+        setData((prev) => ({ ...(prev || {} as DashboardData), ...cachedData }));
         setLoading(false);
       } else {
         setLoading(true);
@@ -74,17 +81,40 @@ export default function DashboardPage() {
       setLoading(true);
     }
 
-    // 2. 백그라운드에서 최신 데이터 fetch (stale-while-revalidate)
     try {
-      const res = await fetch(`/api/dashboard?period=${periodDays}`);
+      const res = await fetch(`/api/dashboard/stats?period=${periodDays}`);
       const json = await res.json();
-      setData(json);
+      setData((prev) => ({ ...(prev || {} as DashboardData), ...json }));
       setLoading(false);
       try {
         sessionStorage.setItem(cacheKey, JSON.stringify(json));
       } catch {}
     } catch {
       setLoading(false);
+    }
+  };
+
+  const loadRecommendations = async () => {
+    const cacheKey = "dashboard_recommendations";
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const cachedData = JSON.parse(cached);
+        setData((prev) => ({ ...(prev || {} as DashboardData), ...cachedData }));
+        setRecLoading(false);
+      }
+    } catch {}
+
+    try {
+      const res = await fetch("/api/dashboard/recommendations");
+      const json = await res.json();
+      setData((prev) => ({ ...(prev || {} as DashboardData), ...json }));
+      setRecLoading(false);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(json));
+      } catch {}
+    } catch {
+      setRecLoading(false);
     }
   };
 
@@ -352,8 +382,7 @@ export default function DashboardPage() {
         )}
 
         {/* 플래시카드 추천 */}
-        {(data.recommendations.length > 0 || (data.wordRecommendations && data.wordRecommendations.length > 0)) && (
-          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
             <p className="text-sm font-semibold text-gray-700 mb-1">
               플래시카드 추천
             </p>
@@ -411,12 +440,25 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {recType === "sentence" ? (
+            {recLoading && !data.recommendations ? (
+              <div className="space-y-2 py-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-3 py-2">
+                    <div className="flex-1 space-y-1">
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-3/4" />
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-1/2" />
+                    </div>
+                    <div className="h-7 w-14 bg-gray-100 rounded-full animate-pulse" />
+                  </div>
+                ))}
+              </div>
+            ) : recType === "sentence" ? (
               (() => {
+                const recs = data.recommendations || [];
                 const filteredRecs =
                   recLangFilter === "all"
-                    ? data.recommendations.slice(0, 10)
-                    : data.recommendations
+                    ? recs.slice(0, 10)
+                    : recs
                         .filter((r) => r.direction.includes(recLangFilter))
                         .slice(0, 10);
 
@@ -491,7 +533,6 @@ export default function DashboardPage() {
               })()
             )}
           </div>
-        )}
       </div>
 
       {enrichTarget && (
