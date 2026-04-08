@@ -241,7 +241,7 @@ export default function DashboardPage() {
         showFlashcardLink
       />
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 page-safe-bottom">
         {/* 요약 카드 */}
         <div className="grid grid-cols-4 gap-2">
           <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 text-center">

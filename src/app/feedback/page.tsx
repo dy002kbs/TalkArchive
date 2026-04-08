@@ -61,7 +61,7 @@ export default function FeedbackPage() {
     <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
       <Header title="피드백" showBack onBack={() => router.push("/")} />
 
-      <div className="flex-1 px-4 pt-6">
+      <div className="flex-1 px-4 pt-6 page-safe-bottom">
         <p className="text-sm text-gray-500 mb-4">
           사용 중 불편한 점이나 개선 의견을 알려주세요.
         </p>

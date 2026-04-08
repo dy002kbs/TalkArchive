@@ -171,7 +171,7 @@ export default function ConversationDetailPage({
         showFlashcardLink
       />
 
-      <div className="flex-1 overflow-y-auto pb-4">
+      <div className="flex-1 overflow-y-auto pb-4 page-safe-bottom">
         {loading ? (
           <div className="flex items-center justify-center h-full text-gray-400 text-sm">
             로딩 중...

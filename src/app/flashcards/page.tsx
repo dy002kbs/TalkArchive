@@ -223,7 +223,7 @@ export default function FlashcardsPage() {
 
       {viewMode === "card" ? (
         /* 카드 모드 */
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 page-safe-bottom">
           {!card ? (
             <p className="text-sm text-gray-400">이 언어의 카드가 없습니다</p>
           ) : (
@@ -365,7 +365,7 @@ export default function FlashcardsPage() {
         </div>
       ) : (
         /* 목록 모드 */
-        <div className="flex-1 overflow-y-auto px-4 py-2">
+        <div className="flex-1 overflow-y-auto px-4 py-2 page-safe-bottom">
           {filteredCards.length === 0 && (
             <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               이 언어의 카드가 없습니다

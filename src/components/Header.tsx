@@ -32,7 +32,7 @@ export default function Header({
           {title}
         </h1>
         {!showBack && (
-          <span className="text-[10px] text-gray-400 ml-0.5">v0.3.9</span>
+          <span className="text-[10px] text-gray-400 ml-0.5">v0.4.0</span>
         )}
       </div>
       {showBack && showFlashcardLink && (

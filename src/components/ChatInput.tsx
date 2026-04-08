@@ -121,7 +121,7 @@ export default function ChatInput({
   };
 
   return (
-    <div className="bg-white border-t border-gray-200 px-4 py-3">
+    <div className="bg-white border-t border-gray-200 px-4 py-3 safe-bottom">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <div className="flex items-center bg-gray-100 rounded-full p-0.5 shrink-0">
           <button
