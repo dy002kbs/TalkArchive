@@ -6,29 +6,56 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+type MessageRow = {
+  id: string;
+  direction: string;
+  created_at: string;
+  original_text: string;
+  translated_text: string;
+  pronunciation: string;
+};
+
+type FlashcardRow = {
+  message_id: string;
+  mastered: boolean;
+  enriched_data: {
+    wordBreakdown?: { word: string; reading: string; meaning: string }[];
+  } | null;
+};
+
 export async function GET(request: NextRequest) {
   // TODO: 로그인 추가 시 user_id 필터링 추가
 
-  // 기간 파라미터 (기본 7일)
   const { searchParams } = new URL(request.url);
   const periodDays = parseInt(searchParams.get("period") || "7", 10);
   const validPeriod = [7, 14, 30].includes(periodDays) ? periodDays : 7;
 
-  // 전체 대화 수
-  const { count: totalConversations } = await supabase
-    .from("conversations")
-    .select("*", { count: "exact", head: true });
+  // 모든 쿼리를 병렬로 실행 (단 3개 쿼리)
+  const [convResult, messagesResult, flashcardsResult] = await Promise.all([
+    // 1. 대화 수만 카운트
+    supabase.from("conversations").select("*", { count: "exact", head: true }),
 
-  // 전체 메시지 수
-  const { count: totalMessages } = await supabase
-    .from("messages")
-    .select("*", { count: "exact", head: true });
+    // 2. 모든 메시지를 한 번에 가져오기 (필요한 모든 컬럼 포함)
+    supabase
+      .from("messages")
+      .select("id, direction, created_at, original_text, translated_text, pronunciation")
+      .order("created_at", { ascending: false }),
 
-  // 언어별 메시지 수
-  const { data: messages } = await supabase
-    .from("messages")
-    .select("direction, created_at");
+    // 3. 모든 플래시카드 한 번에 (direction은 message에서 join)
+    supabase
+      .from("flashcards")
+      .select("message_id, mastered, enriched_data"),
+  ]);
 
+  const totalConversations = convResult.count || 0;
+  const messages = (messagesResult.data || []) as MessageRow[];
+  const flashcards = (flashcardsResult.data || []) as FlashcardRow[];
+
+  const totalMessages = messages.length;
+  const totalFlashcards = flashcards.length;
+  const masteredFlashcards = flashcards.filter((f) => f.mastered).length;
+
+  // 메시지 단일 순회로 모든 통계 계산
   const langStats: Record<string, number> = {};
   const now = new Date();
   const periodStart = new Date(now.getTime() - validPeriod * 24 * 60 * 60 * 1000);
@@ -46,8 +73,12 @@ export async function GET(request: NextRequest) {
     dailyActivity[key] = 0;
   }
 
-  (messages || []).forEach((m) => {
-    // 언어별 집계
+  // 메시지 ID → direction 맵 (단어 추천에서 사용)
+  const messageDirectionMap = new Map<string, string>();
+
+  messages.forEach((m) => {
+    messageDirectionMap.set(m.id, m.direction);
+
     const lang = m.direction.includes("zh")
       ? "zh"
       : m.direction.includes("ja")
@@ -55,12 +86,10 @@ export async function GET(request: NextRequest) {
         : "en";
     langStats[lang] = (langStats[lang] || 0) + 1;
 
-    // 기간 비교
     const created = new Date(m.created_at);
     if (created >= periodStart) currentPeriodCount++;
     if (created >= prevPeriodStart && created < periodStart) prevPeriodCount++;
 
-    // 일별 활동
     if (created >= periodStart) {
       const key = `${created.getMonth() + 1}/${created.getDate()}`;
       if (dailyActivity[key] !== undefined) {
@@ -69,7 +98,6 @@ export async function GET(request: NextRequest) {
     }
   });
 
-  // 변화율
   const periodChange =
     prevPeriodCount > 0
       ? Math.round(((currentPeriodCount - prevPeriodCount) / prevPeriodCount) * 100)
@@ -77,42 +105,23 @@ export async function GET(request: NextRequest) {
         ? 100
         : 0;
 
-  // 플래시카드 통계
-  const { count: totalFlashcards } = await supabase
-    .from("flashcards")
-    .select("*", { count: "exact", head: true });
+  // 플래시카드 message_id 집합 (문장 추천 필터링용)
+  const flashcardMessageIds = new Set(flashcards.map((f) => f.message_id));
 
-  const { count: masteredFlashcards } = await supabase
-    .from("flashcards")
-    .select("*", { count: "exact", head: true })
-    .eq("mastered", true);
-
-  // 번역 빈도 기반 추천
-  const { data: allMessages } = await supabase
-    .from("messages")
-    .select("id, original_text, translated_text, direction, pronunciation");
-
-  const { data: existingFlashcards } = await supabase
-    .from("flashcards")
-    .select("message_id");
-
-  const flashcardMessageIds = new Set(
-    (existingFlashcards || []).map((f) => f.message_id)
-  );
-
+  // 문장 추천: 빈도순
   const freqMap = new Map<
     string,
-    { count: number; message: typeof allMessages extends (infer T)[] | null ? T : never }
+    { count: number; message: MessageRow }
   >();
-  (allMessages || []).forEach((m) => {
+  messages.forEach((m) => {
     if (flashcardMessageIds.has(m.id)) return;
     if (m.original_text.length < 2 || m.original_text.length > 30) return;
     const key = m.translated_text;
     const existing = freqMap.get(key);
-    if (!existing || existing.count < 1) {
-      freqMap.set(key, { count: (existing?.count || 0) + 1, message: m });
+    if (existing) {
+      existing.count++;
     } else {
-      freqMap.set(key, { count: existing.count + 1, message: existing.message });
+      freqMap.set(key, { count: 1, message: m });
     }
   });
 
@@ -120,18 +129,15 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 30)
     .map((item) => ({
-      ...item.message,
+      id: item.message.id,
+      original_text: item.message.original_text,
+      translated_text: item.message.translated_text,
+      direction: item.message.direction,
+      pronunciation: item.message.pronunciation,
       frequency: item.count,
     }));
 
-  // 단어 추천 — 모든 플래시카드의 wordBreakdown 집계
-  const { data: allFlashcards } = await supabase
-    .from("flashcards")
-    .select(`
-      enriched_data,
-      messages!inner(direction)
-    `);
-
+  // 단어 추천: wordBreakdown 빈도 집계
   type WordEntry = {
     word: string;
     reading: string;
@@ -142,14 +148,12 @@ export async function GET(request: NextRequest) {
 
   const wordFreqMap = new Map<string, WordEntry>();
 
-  (allFlashcards || []).forEach((fc) => {
-    const enriched = (fc as { enriched_data?: { wordBreakdown?: { word: string; reading: string; meaning: string }[] } }).enriched_data;
+  flashcards.forEach((fc) => {
+    const enriched = fc.enriched_data;
     if (!enriched?.wordBreakdown) return;
-    const msg = fc.messages as unknown as { direction: string };
-    const direction = msg?.direction || "";
+    const direction = messageDirectionMap.get(fc.message_id) || "";
 
     enriched.wordBreakdown.forEach((w) => {
-      // 키: word + direction (같은 단어를 다른 언어로 분리)
       const key = `${direction}::${w.word}`;
       const existing = wordFreqMap.get(key);
       if (existing) {
@@ -171,15 +175,15 @@ export async function GET(request: NextRequest) {
     .slice(0, 30);
 
   return NextResponse.json({
-    totalConversations: totalConversations || 0,
-    totalMessages: totalMessages || 0,
+    totalConversations,
+    totalMessages,
     langStats,
     periodDays: validPeriod,
     currentPeriodCount,
     periodChange,
     dailyActivity,
-    totalFlashcards: totalFlashcards || 0,
-    masteredFlashcards: masteredFlashcards || 0,
+    totalFlashcards,
+    masteredFlashcards,
     recommendations,
     wordRecommendations,
   });
