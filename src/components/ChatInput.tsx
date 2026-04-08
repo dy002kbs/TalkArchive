@@ -122,11 +122,11 @@ export default function ChatInput({
 
   return (
     <div className="bg-white border-t border-gray-200 px-4 py-3">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="flex items-center bg-gray-100 rounded-full p-0.5">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <div className="flex items-center bg-gray-100 rounded-full p-0.5 shrink-0">
           <button
             onClick={() => onChangeLanguage("zh")}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
               language === "zh"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-500"
@@ -136,7 +136,7 @@ export default function ChatInput({
           </button>
           <button
             onClick={() => onChangeLanguage("ja")}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
               language === "ja"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-500"
@@ -146,7 +146,7 @@ export default function ChatInput({
           </button>
           <button
             onClick={() => onChangeLanguage("en")}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
               language === "en"
                 ? "bg-white text-gray-900 shadow-sm"
                 : "text-gray-500"
@@ -157,10 +157,10 @@ export default function ChatInput({
         </div>
         <button
           onClick={onToggleDirection}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 text-sm font-medium text-gray-700 active:bg-gray-200 transition-colors"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 text-xs font-medium text-gray-700 active:bg-gray-200 transition-colors whitespace-nowrap shrink-0"
         >
           {DIRECTION_LABELS[direction]}
-          <span className="text-base">🔄</span>
+          <span className="text-sm">🔄</span>
         </button>
       </div>
       <div className="flex items-center gap-2">
