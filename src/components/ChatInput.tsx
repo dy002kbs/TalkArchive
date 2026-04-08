@@ -188,12 +188,12 @@ export default function ChatInput({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={isListening ? "듣고 있어요..." : PLACEHOLDERS[direction]}
-          className="flex-1 px-4 py-2.5 rounded-full border border-gray-300 text-base focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className="flex-1 min-w-0 px-4 py-2.5 rounded-full border border-gray-300 text-base focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
         <button
           onClick={handleSubmit}
           disabled={!text.trim()}
-          className="px-4 py-2.5 rounded-full bg-blue-500 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-600 transition-colors"
+          className="px-4 py-2.5 rounded-full bg-blue-500 text-white text-sm font-medium disabled:opacity-40 active:bg-blue-600 transition-colors whitespace-nowrap shrink-0"
         >
           전송
         </button>
