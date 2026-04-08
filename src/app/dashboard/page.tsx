@@ -60,11 +60,32 @@ export default function DashboardPage() {
   }, [period]);
 
   const loadDashboard = async (periodDays: Period) => {
-    setLoading(true);
-    const res = await fetch(`/api/dashboard?period=${periodDays}`);
-    const json = await res.json();
-    setData(json);
-    setLoading(false);
+    const cacheKey = `dashboard_${periodDays}`;
+    // 1. sessionStorage에 캐시 있으면 즉시 표시 (체감 0ms)
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        setData(JSON.parse(cached));
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+    } catch {
+      setLoading(true);
+    }
+
+    // 2. 백그라운드에서 최신 데이터 fetch (stale-while-revalidate)
+    try {
+      const res = await fetch(`/api/dashboard?period=${periodDays}`);
+      const json = await res.json();
+      setData(json);
+      setLoading(false);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(json));
+      } catch {}
+    } catch {
+      setLoading(false);
+    }
   };
 
   const startAddToFlashcard = (rec: DashboardData["recommendations"][number]) => {

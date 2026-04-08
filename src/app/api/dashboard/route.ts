@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
+// 30초 ISR 캐싱 — 같은 응답을 30초간 재사용
+export const revalidate = 30;
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -35,11 +38,12 @@ export async function GET(request: NextRequest) {
     // 1. 대화 수만 카운트
     supabase.from("conversations").select("*", { count: "exact", head: true }),
 
-    // 2. 모든 메시지를 한 번에 가져오기 (필요한 모든 컬럼 포함)
+    // 2. 모든 메시지를 한 번에 가져오기 (대시보드에 필요한 컬럼만)
     supabase
       .from("messages")
       .select("id, direction, created_at, original_text, translated_text, pronunciation")
-      .order("created_at", { ascending: false }),
+      .order("created_at", { ascending: false })
+      .limit(500),
 
     // 3. 모든 플래시카드 한 번에 (direction은 message에서 join)
     supabase
@@ -174,17 +178,28 @@ export async function GET(request: NextRequest) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 30);
 
-  return NextResponse.json({
-    totalConversations,
-    totalMessages,
-    langStats,
-    periodDays: validPeriod,
-    currentPeriodCount,
-    periodChange,
-    dailyActivity,
-    totalFlashcards,
-    masteredFlashcards,
-    recommendations,
-    wordRecommendations,
-  });
+  return NextResponse.json(
+    {
+      totalConversations,
+      totalMessages,
+      langStats,
+      periodDays: validPeriod,
+      currentPeriodCount,
+      periodChange,
+      dailyActivity,
+      totalFlashcards,
+      masteredFlashcards,
+      recommendations,
+      wordRecommendations,
+    },
+    {
+      headers: {
+        // CDN 엣지에서 30초 캐시, stale-while-revalidate 60초
+        // → 첫 유저: 1.99s
+        // → 30초 이내 재요청: 즉시 (캐시)
+        // → 30~60초: 캐시 반환 + 백그라운드 갱신
+        "Cache-Control": "public, s-maxage=30, stale-while-revalidate=60",
+      },
+    }
+  );
 }
