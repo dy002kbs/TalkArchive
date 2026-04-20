@@ -1,13 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface HeaderProps {
   title?: string;
   showBack?: boolean;
   onBack?: () => void;
   onNewConversation?: () => void;
-  showFlashcardLink?: boolean;
 }
 
 export default function Header({
@@ -15,69 +14,58 @@ export default function Header({
   showBack = false,
   onBack,
   onNewConversation,
-  showFlashcardLink = false,
 }: HeaderProps) {
+  const router = useRouter();
+
+  const handleBack = () => {
+    if (onBack) onBack();
+    else router.back();
+  };
+
   return (
-    <header className="bg-white border-b border-gray-200 px-3 py-2.5 flex items-center justify-between gap-2">
-      <div className="flex items-center gap-1.5 min-w-0 shrink-0">
+    <header
+      className="bg-white flex items-center justify-between px-5 py-3.5"
+      style={{ borderBottom: "1px solid var(--c-border)" }}
+    >
+      <div className="flex items-center gap-3">
         {showBack && (
           <button
-            onClick={onBack}
-            className="text-gray-600 text-lg p-1 shrink-0"
+            onClick={handleBack}
+            className="w-8 h-8 flex items-center justify-center rounded-xl transition-colors active:opacity-60"
+            style={{ background: "var(--c-bg)" }}
           >
-            ←
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="var(--c-muted)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
           </button>
         )}
-        <h1 className="text-base sm:text-lg font-bold text-gray-900 whitespace-nowrap">
+        <h1
+          className="text-lg font-bold tracking-tight"
+          style={{ color: "var(--c-text)" }}
+        >
           {title}
         </h1>
         {!showBack && (
-          <span className="text-[10px] text-gray-400 ml-0.5">v0.4.1</span>
+          <span className="text-[10px]" style={{ color: "var(--c-subtle)" }}>
+            v0.4.1
+          </span>
         )}
       </div>
-      {showBack && showFlashcardLink && (
-        <Link
-          href="/flashcards"
-          className="px-2.5 py-1 text-xs sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors whitespace-nowrap"
+
+      {!showBack && onNewConversation && (
+        <button
+          onClick={onNewConversation}
+          className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors active:opacity-70"
+          style={{ background: "var(--c-indigo-l)" }}
+          title="새 대화"
         >
-          학습
-        </Link>
-      )}
-      {!showBack && (
-        <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
-          {onNewConversation && (
-            <button
-              onClick={onNewConversation}
-              className="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-sm font-medium text-blue-600 bg-blue-50 rounded-full active:bg-blue-100 transition-colors whitespace-nowrap"
-            >
-              + 새 대화
-            </button>
-          )}
-          <Link
-            href="/history"
-            className="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors whitespace-nowrap"
-          >
-            기록
-          </Link>
-          <Link
-            href="/dashboard"
-            className="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors whitespace-nowrap"
-          >
-            대시보드
-          </Link>
-          <Link
-            href="/flashcards"
-            className="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-sm font-medium text-gray-600 bg-gray-100 rounded-full active:bg-gray-200 transition-colors whitespace-nowrap"
-          >
-            학습
-          </Link>
-          <Link
-            href="/feedback"
-            className="px-2 sm:px-3 py-1 sm:py-1.5 text-[11px] sm:text-sm font-medium text-orange-600 bg-orange-50 rounded-full active:bg-orange-100 transition-colors whitespace-nowrap"
-          >
-            QA
-          </Link>
-        </div>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="var(--c-indigo)" strokeWidth="2.2" strokeLinecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
       )}
     </header>
   );

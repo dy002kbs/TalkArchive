@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
 
 const TYPES = [
   { value: "mistranslation", label: "오역", emoji: "🔤" },
@@ -38,71 +39,97 @@ export default function FeedbackPage() {
 
   if (submitted) {
     return (
-      <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
+      <div className="flex flex-col h-full max-w-lg mx-auto" style={{ background: "var(--c-bg)" }}>
         <Header title="피드백" showBack onBack={() => router.push("/")} />
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-4">
           <p className="text-4xl">🙏</p>
-          <p className="text-lg font-medium text-gray-900">감사합니다!</p>
-          <p className="text-sm text-gray-500 text-center">
+          <p className="text-lg font-medium" style={{ color: "var(--c-text)" }}>감사합니다!</p>
+          <p className="text-sm text-center" style={{ color: "var(--c-muted)" }}>
             소중한 피드백이 전달되었습니다.
           </p>
           <button
-            onClick={() => router.push("/")}
-            className="mt-4 px-6 py-2.5 rounded-full bg-blue-500 text-white text-sm font-medium active:bg-blue-600 transition-colors"
+            onClick={() => {
+              setSubmitted(false);
+              setType("");
+              setContent("");
+            }}
+            className="mt-4 px-6 py-2.5 rounded-xl text-sm font-semibold active:opacity-70 transition-opacity"
+            style={{ background: "var(--c-indigo)", color: "white" }}
           >
-            돌아가기
+            다른 피드백 남기기
           </button>
         </div>
+        <BottomNav />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
+    <div className="flex flex-col h-full max-w-lg mx-auto" style={{ background: "var(--c-bg)" }}>
       <Header title="피드백" showBack onBack={() => router.push("/")} />
 
-      <div className="flex-1 px-4 pt-6 page-safe-bottom">
-        <p className="text-sm text-gray-500 mb-4">
+      <div className="flex-1 overflow-y-auto px-4 pt-6 page-safe-bottom">
+        <p className="text-sm mb-4" style={{ color: "var(--c-muted)" }}>
           사용 중 불편한 점이나 개선 의견을 알려주세요.
         </p>
 
-        {/* 유형 선택 */}
-        <p className="text-xs font-semibold text-gray-400 mb-2">유형 선택</p>
+        <p className="text-[11px] font-semibold mb-2 uppercase tracking-wider" style={{ color: "var(--c-subtle)" }}>
+          유형 선택
+        </p>
         <div className="flex gap-2 mb-6">
           {TYPES.map((t) => (
             <button
               key={t.value}
               onClick={() => setType(t.value)}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors border ${
-                type === t.value
-                  ? "bg-blue-50 border-blue-300 text-blue-700"
-                  : "bg-white border-gray-200 text-gray-600 active:bg-gray-50"
-              }`}
+              className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              style={{
+                background: type === t.value ? "var(--c-indigo-l)" : "var(--c-surface)",
+                color: type === t.value ? "var(--c-indigo)" : "var(--c-muted)",
+                border: `1.5px solid ${type === t.value ? "var(--c-indigo-m)" : "var(--c-border)"}`,
+              }}
             >
               {t.emoji} {t.label}
             </button>
           ))}
         </div>
 
-        {/* 내용 입력 */}
-        <p className="text-xs font-semibold text-gray-400 mb-2">내용</p>
+        <p className="text-[11px] font-semibold mb-2 uppercase tracking-wider" style={{ color: "var(--c-subtle)" }}>
+          내용
+        </p>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="자유롭게 입력해주세요..."
           rows={5}
-          className="w-full p-4 rounded-xl border border-gray-300 text-base resize-none focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+          className="w-full p-4 rounded-xl text-base resize-none focus:outline-none"
+          style={{
+            background: "var(--c-surface)",
+            border: "1.5px solid var(--c-border)",
+            color: "var(--c-text)",
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = "var(--c-indigo-m)";
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = "var(--c-border)";
+          }}
         />
 
-        {/* 제출 */}
         <button
           onClick={handleSubmit}
           disabled={!type || !content.trim() || submitting}
-          className="w-full mt-6 py-3 rounded-full bg-blue-500 text-white text-base font-medium disabled:opacity-40 active:bg-blue-600 transition-colors"
+          className="w-full mt-6 py-3 rounded-xl text-base font-semibold transition-opacity active:opacity-70"
+          style={{
+            background: "var(--c-indigo)",
+            color: "white",
+            opacity: !type || !content.trim() || submitting ? 0.4 : 1,
+          }}
         >
           {submitting ? "제출 중..." : "제출하기"}
         </button>
       </div>
+
+      <BottomNav />
     </div>
   );
 }

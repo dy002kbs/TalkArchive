@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import Header from "@/components/Header";
+import BottomNav from "@/components/BottomNav";
 import MessageBubble, { Message } from "@/components/MessageBubble";
 import AddFlashcardModal from "@/components/AddFlashcardModal";
 import { EnrichedData } from "@/components/EnrichModal";
@@ -53,7 +54,7 @@ export default function ConversationDetailPage({
       .from("messages")
       .select("*")
       .eq("conversation_id", id)
-      .order("created_at", { ascending: true });
+      .order("created_at", { ascending: false });
 
     if (msgs) {
       setMessages(
@@ -86,7 +87,6 @@ export default function ConversationDetailPage({
       return;
     }
 
-    // 이미 추가된 메시지인지 확인
     const { data: existing } = await supabase
       .from("flashcards")
       .select("id")
@@ -163,32 +163,32 @@ export default function ConversationDetailPage({
   };
 
   return (
-    <div className="flex flex-col h-full max-w-lg mx-auto bg-gray-50">
+    <div className="flex flex-col h-full max-w-lg mx-auto" style={{ background: "var(--c-bg)" }}>
       <Header
         title={title || "대화"}
         showBack
         onBack={() => router.push("/history")}
-        showFlashcardLink
       />
 
       <div className="flex-1 overflow-y-auto pb-4 page-safe-bottom">
         {loading ? (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+          <div className="flex items-center justify-center h-full text-sm" style={{ color: "var(--c-subtle)" }}>
             로딩 중...
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+          <div className="flex items-center justify-center h-full text-sm" style={{ color: "var(--c-subtle)" }}>
             메시지가 없습니다
           </div>
         ) : (
           <>
             <div className="px-4 py-2 flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-400">
+              <p className="text-xs" style={{ color: "var(--c-subtle)" }}>
                 문장을 탭하면 플래시카드에 추가됩니다 ({flashcardCount}/{MAX_FREE_FLASHCARDS})
               </p>
               <button
                 onClick={exportConversation}
-                className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-medium active:bg-blue-100 transition-colors whitespace-nowrap"
+                className="px-3 py-1 rounded-xl text-xs font-semibold transition-colors active:opacity-70 whitespace-nowrap"
+                style={{ background: "var(--c-indigo-l)", color: "var(--c-indigo)" }}
               >
                 ⬇ 내보내기
               </button>
@@ -205,6 +205,8 @@ export default function ConversationDetailPage({
           </>
         )}
       </div>
+
+      <BottomNav />
 
       {enrichTarget && (
         <AddFlashcardModal

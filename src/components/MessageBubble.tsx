@@ -12,29 +12,31 @@ export interface Message {
   createdAt: Date;
 }
 
-const FLAG_MAP: Record<Direction, string> = {
-  ko2zh: "🇰🇷→🇨🇳",
-  zh2ko: "🇨🇳→🇰🇷",
-  ko2ja: "🇰🇷→🇯🇵",
-  ja2ko: "🇯🇵→🇰🇷",
-  ko2en: "🇰🇷→🇺🇸",
-  en2ko: "🇺🇸→🇰🇷",
-};
-
 export default function MessageBubble({ message }: { message: Message }) {
-  const flag = FLAG_MAP[message.direction] || "";
-
   return (
-    <div className="px-4 py-2">
-      <div className="text-xs text-gray-400 mb-1">{flag}</div>
-      <div className="bg-white rounded-xl p-3 shadow-sm border border-gray-100">
-        <p className="text-base text-gray-900">{message.originalText}</p>
-        <p className="text-base text-blue-600 mt-1">{message.translatedText}</p>
+    <div className="px-4 py-1.5 flex justify-start">
+      <div
+        className="max-w-[85%] px-4 py-3 rounded-[18px] rounded-tl-[4px]"
+        style={{
+          background: "var(--c-indigo)",
+          boxShadow: "var(--c-shadow-sm)",
+        }}
+      >
+        <p className="text-[15px] font-medium leading-relaxed text-white">
+          {message.originalText}
+        </p>
+        <p className="text-[15px] font-medium leading-relaxed text-white mt-1" style={{ opacity: 0.95 }}>
+          {message.translatedText}
+        </p>
         {message.pronunciation && (
-          <p className="text-sm text-gray-500 mt-0.5">{message.pronunciation}</p>
+          <p className="text-[13px] mt-1 leading-snug text-white" style={{ opacity: 0.8 }}>
+            {message.pronunciation}
+          </p>
         )}
         {message.pinyinText && (
-          <p className="text-xs text-gray-400 mt-0.5 italic">{message.pinyinText}</p>
+          <p className="text-[11px] mt-0.5 italic text-white" style={{ opacity: 0.7 }}>
+            {message.pinyinText}
+          </p>
         )}
       </div>
     </div>

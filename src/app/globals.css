@@ -1,21 +1,42 @@
 @import "tailwindcss";
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+:root {
+  --c-indigo:    oklch(52% 0.20 258);
+  --c-indigo-l:  oklch(94% 0.06 258);
+  --c-indigo-m:  oklch(72% 0.14 258);
+  --c-teal:      oklch(50% 0.17 178);
+  --c-teal-l:    oklch(94% 0.06 178);
+  --c-bg:        #F6F5F3;
+  --c-surface:   #FFFFFF;
+  --c-border:    rgba(0, 0, 0, 0.10);
+  --c-text:      #111110;
+  --c-muted:     #6B6860;
+  --c-subtle:    #A8A49E;
+  --c-red:       oklch(58% 0.20 25);
+  --c-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --c-shadow-md: 0 2px 8px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.06);
+  --c-shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06);
 }
 
-/* iOS/Android 안전 영역 (노치, 카메라 영역 회피) */
+body {
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+/* iOS/Android 안전 영역 */
 header {
   padding-top: max(0.625rem, env(safe-area-inset-top));
 }
 
-/* 하단 safe area — 입력창/버튼이 홈 인디케이터와 겹치지 않게 */
 .safe-bottom {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
-/* 페이지 컨테이너 자체에 safe area — 메인 페이지처럼 ChatInput을 가진 곳은 ChatInput에 .safe-bottom 적용 */
 .page-safe-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* 하단 탭바 안전 영역 */
+.tab-bar-safe {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
